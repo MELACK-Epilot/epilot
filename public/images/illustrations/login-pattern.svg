@@ -1,0 +1,18 @@
+<svg width="800" height="600" viewBox="0 0 800 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Motif géométrique moderne pour la page de connexion -->
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1D3557;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#2A9D8F;stop-opacity:0.05" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Cercles décoratifs -->
+  <circle cx="100" cy="100" r="80" fill="url(#grad1)" />
+  <circle cx="700" cy="500" r="120" fill="url(#grad1)" />
+  <circle cx="400" cy="300" r="60" fill="url(#grad1)" />
+  
+  <!-- Lignes géométriques -->
+  <path d="M0,200 Q400,150 800,200" stroke="#2A9D8F" stroke-width="2" opacity="0.1" fill="none"/>
+  <path d="M0,400 Q400,450 800,400" stroke="#E9C46A" stroke-width="2" opacity="0.1" fill="none"/>
+</svg>

@@ -1,0 +1,86 @@
+# ============================================
+# NETLIFY CONFIGURATION - E-PILOT CONGO
+# ============================================
+
+[build]
+  # Commande de build
+  command = "npm run build"
+  
+  # Répertoire de sortie
+  publish = "dist"
+  
+  # Variables d'environnement pour le build
+  [build.environment]
+    NODE_VERSION = "18"
+    NPM_VERSION = "9"
+
+# ============================================
+# REDIRECTIONS POUR SPA (React Router)
+# ============================================
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# ============================================
+# HEADERS DE SÉCURITÉ
+# ============================================
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+
+# ============================================
+# CACHE DES ASSETS
+# ============================================
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# ============================================
+# OPTIMISATIONS
+# ============================================
+[build.processing]
+  skip_processing = false
+
+[build.processing.css]
+  bundle = true
+  minify = true
+
+[build.processing.js]
+  bundle = true
+  minify = true
+
+[build.processing.html]
+  pretty_urls = true
+
+[build.processing.images]
+  compress = true
+
+# ============================================
+# FONCTIONS (si nécessaire plus tard)
+# ============================================
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# ============================================
+# PLUGINS (optionnel)
+# ============================================
+# [[plugins]]
+#   package = "@netlify/plugin-lighthouse"
