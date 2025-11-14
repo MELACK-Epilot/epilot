@@ -2,10 +2,16 @@
  * Super Admin - Niveau 1 - Plateforme
  * Gestion globale de la plateforme E-Pilot
  * 
- * Note: Structure créée, composants à développer
+ * Système robuste de niveau mondial implémenté
  */
 
-// TODO: Implémenter les composants principaux
+// Composants principaux
+export { CategoriesModulesManager } from './components/CategoriesModulesManager';
+
+// Pages
+export { default as CategoriesModulesPage } from './pages/CategoriesModulesPage';
+
+// TODO: Implémenter les autres composants
 // export { default as PlatformDashboard } from './components/PlatformDashboard';
 // export { default as SystemSettings } from './components/SystemSettings';
 // export { default as GlobalAnalytics } from './components/GlobalAnalytics';

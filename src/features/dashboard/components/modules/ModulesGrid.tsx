@@ -87,7 +87,7 @@ export const ModulesGrid = ({ data, isLoading, onView, onEdit, onDelete }: Modul
     <AnimatedContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" stagger={0.05}>
       {data.map((module) => (
         <AnimatedItem key={module.id}>
-          <Card className="relative overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group cursor-pointer">
+          <Card className="relative overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group cursor-pointer h-80 flex flex-col">
             {/* Background gradient basé sur la catégorie */}
             <div 
               className="absolute inset-0 opacity-5"
@@ -96,7 +96,7 @@ export const ModulesGrid = ({ data, isLoading, onView, onEdit, onDelete }: Modul
               }}
             />
             
-            <CardContent className="p-6 relative z-10">
+            <CardContent className="p-6 relative z-10 flex flex-col h-full">
               {/* Header avec icône et actions */}
               <div className="flex items-start justify-between mb-4">
                 <div 
@@ -183,8 +183,11 @@ export const ModulesGrid = ({ data, isLoading, onView, onEdit, onDelete }: Modul
                 </div>
               )}
 
+              {/* Spacer pour pousser les badges vers le bas */}
+              <div className="flex-grow"></div>
+              
               {/* Badges statut et plan */}
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-2 mt-auto">
                 {getStatusBadge(module.status)}
                 {getPlanBadge(module.requiredPlan)}
               </div>

@@ -33,6 +33,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { SchoolAlerts } from '../components/SchoolAlerts';
+import { AvailableModules } from '../components/AvailableModules';
 import { useUserModulesContext } from '@/contexts/UserPermissionsProvider';
 import { getKPIsForRole } from '../utils/rolePermissions';
 import { EmptyModulesState } from '../components/EmptyModulesState';
