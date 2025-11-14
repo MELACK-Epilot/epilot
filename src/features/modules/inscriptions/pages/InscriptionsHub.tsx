@@ -21,6 +21,11 @@ import { fr } from 'date-fns/locale';
 export const InscriptionsHub = () => {
   const navigate = useNavigate();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  
+  // ⭐ Détection automatique de l'espace (user ou dashboard)
+  const currentPath = window.location.pathname;
+  const isUserSpace = currentPath.includes('/user/');
+  const baseUrl = isUserSpace ? '/user/modules/gestion-inscriptions' : '/dashboard/modules/inscriptions';
   // Hooks React Query
   const { data: inscriptions = [], refetch, isLoading } = useInscriptions();
   const { data: statsData } = useInscriptionStats();
@@ -130,7 +135,7 @@ export const InscriptionsHub = () => {
                   </Button>
                   
                   <Button
-                    onClick={() => navigate('/dashboard/modules/inscriptions/liste')}
+                    onClick={() => navigate(`${baseUrl}/liste`)}
                     variant="outline"
                     className="bg-white/10 border-white/20 text-white hover:bg-white/20 gap-2 flex-1"
                   >
@@ -236,7 +241,7 @@ export const InscriptionsHub = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/dashboard/modules/inscriptions/liste')}
+                onClick={() => navigate(`${baseUrl}/liste`)}
                 className="gap-2"
               >
                 Voir tout
@@ -258,7 +263,7 @@ export const InscriptionsHub = () => {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.4 + index * 0.05 }}
                     className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-                    onClick={() => navigate(`/dashboard/modules/inscriptions/${inscription.id}`)}
+                    onClick={() => navigate(`${baseUrl}/${inscription.id}`)}
                   >
                     <div className="flex items-center gap-4 flex-1">
                       <div className="w-10 h-10 bg-[#1D3557] rounded-full flex items-center justify-center text-white font-semibold">

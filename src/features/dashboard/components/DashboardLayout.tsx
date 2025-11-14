@@ -28,6 +28,7 @@ import {
   Sun,
   Moon,
   Layers,
+  TestTube2,
   TrendingUp,
   Package,
   DollarSign,
@@ -111,6 +112,13 @@ const allNavigationItems = [
     href: '/dashboard/modules',
     badge: null,
     roles: ['super_admin'], // ✅ Super Admin uniquement (gestion plateforme)
+  },
+  {
+    title: 'Environnement Sandbox',
+    icon: TestTube2,
+    href: '/dashboard/sandbox',
+    badge: null,
+    roles: ['super_admin'], // ✅ Super Admin uniquement (développement)
   },
   {
     title: 'Finances',

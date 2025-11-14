@@ -131,6 +131,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       },
 
       // Mise à jour du plan d'abonnement (ACTION PRINCIPALE)
+      // Optimisé pour 500+ groupes avec fonction RPC
       updateSubscriptionPlan: async (planId, queryClient) => {
         const state = get();
         const schoolGroupId = state.currentSubscription?.school_group_id;
@@ -173,49 +174,24 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             plan: (updatedSubscription as any).plan ?? null,
           };
 
-          // 2. Récupérer les modules réellement assignés au groupe
-          const { data: groupModules, error: moduleError } = await supabase
-            .from('group_module_configs')
-            .select(`
-              module_id,
-              is_enabled,
-              modules!inner(
-                id,
-                name,
-                slug,
-                category_id,
-                required_plan,
-                business_categories(
-                  id,
-                  name,
-                  color
-                )
-              )
-            `)
-            .eq('school_group_id', schoolGroupId);
+          // 2. Utiliser la fonction RPC optimisée pour récupérer les modules disponibles
+          const { data: availableModules, error: moduleError } = await (supabase as any)
+            .rpc('get_available_modules_for_group', {
+              p_school_group_id: schoolGroupId
+            });
 
           if (moduleError) throw moduleError;
 
           // 3. Formater les données
-          const formattedModules: ModuleAccess[] = (groupModules || [])
-            .map((config: any) => {
-              const module = config.modules;
-              if (!module?.id || !module?.name) {
-                return null;
-              }
-
-              const category = module.business_categories;
-
-              return {
-                module_id: module.id,
-                module_name: module.name,
-                category_id: module.category_id ?? category?.id ?? null,
-                category_name: category?.name || 'Sans catégorie',
-                is_enabled: Boolean(config.is_enabled),
-                plan_required: module.required_plan ?? normalizedSubscription.plan?.slug ?? null,
-              } as ModuleAccess;
-            })
-            .filter((module): module is ModuleAccess => module !== null);
+          const formattedModules: ModuleAccess[] = (availableModules || [])
+            .map((module: any) => ({
+              module_id: module.module_id,
+              module_name: module.module_name,
+              category_id: module.category_id,
+              category_name: module.category_name || 'Sans catégorie',
+              is_enabled: true, // Modules disponibles sont activés
+              plan_required: normalizedSubscription.plan?.slug ?? null,
+            }));
 
           // 4. Mettre à jour le store
           set((draft) => {
@@ -250,9 +226,12 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             await queryClient.invalidateQueries({ 
               queryKey: ['admin-group-categories', schoolGroupId] 
             });
+            await queryClient.invalidateQueries({ 
+              queryKey: ['proviseur-modules'] 
+            });
           }
 
-          console.log('✅ Plan mis à jour avec succès');
+          console.log('✅ Plan mis à jour avec succès - Modules disponibles:', formattedModules.length);
           
         } catch (error: any) {
           console.error('❌ Erreur mise à jour plan:', error);

@@ -4,7 +4,7 @@
  */
 
 import { useAuth } from '@/features/auth/store/auth.store';
-import { MyModulesProviseurModern } from './MyModulesProviseurModern';
+import MyModulesProviseurModern from './MyModulesProviseurModern';
 import { MyModulesDebugSimple } from './MyModulesDebugSimple';
 
 export const MyModules = () => {

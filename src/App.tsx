@@ -41,6 +41,16 @@ import { USER_ROLES, ADMIN_ROLES } from './config/roles';
 // Module Inscriptions
 import { InscriptionsModule } from './features/modules/inscriptions';
 
+// ⭐ Système de Modules Dynamiques
+import { ModuleWorkspaceProvider } from './features/modules/contexts/ModuleWorkspaceProvider';
+import { ModuleWorkspace } from './features/modules/pages/ModuleWorkspace';
+
+// ⭐ Synchronisation Temps Réel
+import { ModulesSync } from './components/ModulesSync';
+
+// ⭐ Sandbox Manager
+import SandboxManager from './features/dashboard/pages/SandboxManager';
+
 // Espace Utilisateur École
 import { UserSpaceLayout, UserDashboard, MyProfile, MySchedule, MyModules, MyCategories, UserDebug } from './features/user-space';
 import { FinancesPage } from './features/user-space/pages/FinancesPage';
@@ -76,6 +86,9 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <PermissionsProvider>
+          {/* ⭐ Synchronisation Temps Réel des Modules */}
+          <ModulesSync />
+          
           <BrowserRouter>
           <RoleBasedRedirect>
           <Routes>
@@ -109,6 +122,13 @@ function App() {
             <Route path="categories" element={
               <ProtectedRoute roles={['super_admin']}>
                 <Categories />
+              </ProtectedRoute>
+            } />
+            
+            {/* ⭐ Environnement Sandbox - Super Admin uniquement */}
+            <Route path="sandbox" element={
+              <ProtectedRoute roles={['super_admin']}>
+                <SandboxManager />
               </ProtectedRoute>
             } />
             
@@ -230,6 +250,16 @@ function App() {
             <Route path="schedule" element={<MySchedule />} />
             <Route path="modules" element={<MyModules />} />
             <Route path="categories" element={<MyCategories />} />
+            
+            {/* ⭐ Routes Dynamiques pour les Modules */}
+            <Route path="modules/:moduleSlug" element={
+              <ModuleWorkspaceProvider>
+                <ModuleWorkspace />
+              </ModuleWorkspaceProvider>
+            } />
+            
+            {/* ⭐ Routes Spécifiques pour le Module Inscriptions */}
+            <Route path="modules/gestion-inscriptions/*" element={<InscriptionsModule />} />
             
             {/* Routes protégées par modules */}
             <Route path="finances" element={

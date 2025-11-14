@@ -137,50 +137,21 @@ export const useAdminGroupAssignmentStore = create<AdminGroupAssignmentState>()(
        * Charger les modules disponibles selon le plan du groupe
        */
       loadAvailableModules: async (schoolGroupId: string) => {
-        return get()._loadAvailableModules(schoolGroupId);
-      },
-
-      /**
-       * Implémentation interne du chargement des modules
-       */
-      _loadAvailableModules: async (schoolGroupId: string) => {
         set({ isLoadingModules: true, error: null });
 
         try {
-          console.log('🔍 [AdminAssignment] Chargement modules pour groupe:', schoolGroupId);
+          console.log('🔍 [AdminAssignment] Chargement modules disponibles selon PLAN pour groupe:', schoolGroupId);
 
-          // Récupérer les modules via group_module_configs (modules activés par l'admin)
-          const { data: groupModules, error } = await supabase
-            .from('group_module_configs')
-            .select(`
-              module_id,
-              is_enabled,
-              modules!inner(
-                id,
-                name,
-                slug,
-                description,
-                icon,
-                color,
-                category_id,
-                status,
-                is_core,
-                required_plan,
-                business_categories!inner(
-                  id,
-                  name,
-                  slug
-                )
-              )
-            `)
-            .eq('school_group_id', schoolGroupId)
-            .eq('is_enabled', true)
-            .eq('modules.status', 'active');
+          // Utiliser la fonction RPC optimisée qui vérifie le plan d'abonnement
+          const { data: modulesData, error: modulesError } = await (supabase as any)
+            .rpc('get_available_modules_for_group', {
+              p_school_group_id: schoolGroupId
+            });
 
-          if (error) throw error;
+          if (modulesError) throw modulesError;
 
           // Transformer les données
-          const availableModules: AssignableModule[] = (groupModules || []).map((gm: any) => ({
+          const availableModules: AssignableModule[] = (modulesData || []).map((gm: any) => ({
             id: gm.modules.id,
             name: gm.modules.name,
             slug: gm.modules.slug,
@@ -326,7 +297,7 @@ export const useAdminGroupAssignmentStore = create<AdminGroupAssignmentState>()(
       },
 
       /**
-       * Assigner des modules à un utilisateur
+       * Assigner des modules à un utilisateur avec validation serveur
        */
       assignModulesToUser: async (userId: string, moduleIds: string[], permissions: AssignmentPermissions) => {
         set({ isAssigning: true, error: null });
@@ -337,68 +308,54 @@ export const useAdminGroupAssignmentStore = create<AdminGroupAssignmentState>()(
           const { data: currentUser } = await supabase.auth.getUser();
           if (!currentUser.user) throw new Error('Non authentifié');
 
-          // Récupérer les infos des modules
-          const { availableModules } = get();
-          const modulesToAssign = availableModules.filter(m => moduleIds.includes(m.id));
+          // Vérifier que l'admin et l'utilisateur sont du même groupe
+          const { data: adminData } = await supabase
+            .from('users')
+            .select('school_group_id, role')
+            .eq('id', currentUser.user.id)
+            .single();
 
-          // Préparer les données d'insertion
-          const assignmentsData = modulesToAssign.map(module => ({
-            user_id: userId,
-            module_id: module.id,
-            is_enabled: true,
-            assigned_at: new Date().toISOString(),
-            assigned_by: currentUser.user.id,
-            settings: {
-              permissions,
-              module_name: module.name,
-              category_name: module.category_name,
-              assigned_via: 'admin_group_interface'
-            },
-            access_count: 0
-          }));
+          const { data: userData } = await supabase
+            .from('users')
+            .select('school_group_id')
+            .eq('id', userId)
+            .single();
 
-          // Insérer avec upsert pour éviter les doublons
-          const { data, error } = await (supabase as any)
-            .from('user_modules')
-            .upsert(assignmentsData)
-            .select();
+          if (!adminData || !userData) {
+            throw new Error('Utilisateur introuvable');
+          }
 
-          if (error) throw error;
+          if ((adminData as any).school_group_id !== (userData as any).school_group_id) {
+            throw new Error('Vous ne pouvez assigner des modules qu\'aux utilisateurs de votre groupe scolaire');
+          }
 
-          console.log('✅ [AdminAssignment] Modules assignés:', data?.length || 0);
+          // Utiliser la fonction RPC pour validation côté serveur
+          console.log('🔐 [AdminAssignment] Utilisation de la validation serveur RPC');
+          
+          const results = await Promise.all(
+            moduleIds.map(moduleId =>
+              (supabase as any).rpc('assign_module_with_validation', {
+                p_user_id: userId,
+                p_module_id: moduleId,
+                p_assigned_by: currentUser.user.id,
+                p_permissions: permissions
+              })
+            )
+          );
+
+          // Vérifier les erreurs
+          const errors = results.filter(r => r.error || (r.data && !r.data.success));
+          if (errors.length > 0) {
+            const errorMessages = errors.map(e => e.error?.message || e.data?.error).join(', ');
+            throw new Error(`Erreur lors de l'assignation: ${errorMessages}`);
+          }
+
+          console.log('✅ [AdminAssignment] Modules assignés avec succès:', results.length);
 
           // Recharger les utilisateurs pour mettre à jour l'état
-          const { users } = get();
-          const updatedUsers = users.map(user => {
-            if (user.id === userId) {
-              // Ajouter les nouveaux modules assignés
-              const newAssignments = modulesToAssign.map(module => ({
-                id: `temp-${module.id}`, // ID temporaire
-                user_id: userId,
-                module_id: module.id,
-                module_name: module.name,
-                module_slug: module.slug,
-                is_enabled: true,
-                assigned_at: new Date().toISOString(),
-                assigned_by: currentUser.user.id,
-                settings: { permissions },
-                access_count: 0
-              }));
+          await get()._loadUsers((adminData as any).school_group_id);
 
-              return {
-                ...user,
-                assignedModules: [...user.assignedModules, ...newAssignments],
-                assignedModulesCount: user.assignedModulesCount + newAssignments.length,
-                lastModuleAssignedAt: new Date().toISOString()
-              };
-            }
-            return user;
-          });
-
-          set({ 
-            users: updatedUsers,
-            isAssigning: false 
-          });
+          set({ isAssigning: false });
 
         } catch (error: any) {
           console.error('❌ [AdminAssignment] Erreur assignation:', error);
@@ -411,30 +368,48 @@ export const useAdminGroupAssignmentStore = create<AdminGroupAssignmentState>()(
       },
 
       /**
-       * Assigner une catégorie complète à un utilisateur
+       * Assigner une catégorie complète à un utilisateur avec validation
        */
       assignCategoryToUser: async (userId: string, categoryId: string, permissions: AssignmentPermissions) => {
         const { availableModules } = get();
-        const categoryModules = availableModules.filter(m => m.category_id === categoryId);
+        
+        // Filtrer les modules actifs de la catégorie
+        const categoryModules = availableModules.filter(m => 
+          m.category_id === categoryId && 
+          m.status === 'active'
+        );
+        
+        if (categoryModules.length === 0) {
+          throw new Error('Aucun module actif trouvé dans cette catégorie');
+        }
+        
         const moduleIds = categoryModules.map(m => m.id);
+        
+        console.log(`📦 [AdminAssignment] Assignation catégorie: ${categoryModules.length} modules`);
         
         return get().assignModulesToUser(userId, moduleIds, permissions);
       },
 
       /**
-       * Révoquer un module d'un utilisateur
+       * Révoquer un module d'un utilisateur avec traçabilité (soft delete)
        */
       revokeModuleFromUser: async (userId: string, moduleId: string) => {
         try {
           console.log('🗑️ [AdminAssignment] Révocation module:', moduleId, 'de utilisateur:', userId);
 
-          const { error } = await supabase
-            .from('user_modules')
-            .delete()
-            .eq('user_id', userId)
-            .eq('module_id', moduleId);
+          const { data: currentUser } = await supabase.auth.getUser();
+          if (!currentUser.user) throw new Error('Non authentifié');
 
-          if (error) throw error;
+          // Utiliser la fonction RPC pour validation serveur
+          const { data, error } = await (supabase as any).rpc('revoke_module_with_validation', {
+            p_user_id: userId,
+            p_module_id: moduleId,
+            p_revoked_by: currentUser.user.id
+          });
+
+          if (error || (data && !data.success)) {
+            throw new Error(error?.message || data?.error || 'Erreur lors de la révocation');
+          }
 
           // Mettre à jour l'état local
           const { users } = get();
