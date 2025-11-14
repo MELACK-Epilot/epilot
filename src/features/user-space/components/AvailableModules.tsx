@@ -20,9 +20,9 @@ import {
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useUserModulesContext } from '@/contexts/UserPermissionsProvider';
+import { usePermissions } from '@/providers/PermissionsProvider';
 import { getLucideIcon } from '@/features/dashboard/utils/iconMapper';
-import type { AssignedModule } from '@/contexts/UserModulesContext';
+import type { AssignedModule } from '@/stores/permissions.store';
 
 
 /**
@@ -175,7 +175,7 @@ EmptyState.displayName = 'EmptyState';
  * Utilise le Context temps réel pour les modules
  */
 export const AvailableModules = () => {
-  const { modules, isLoading, error } = useUserModulesContext();
+  const { modules, isLoading, error } = usePermissions();
 
   // Groupement des modules par catégorie (mémorisé)
   const modulesByCategory = useMemo(() => {
@@ -184,7 +184,7 @@ export const AvailableModules = () => {
     const grouped = new Map<string, AssignedModule[]>();
     
     modules.forEach(module => {
-      const categoryName = module.category?.name || 'Autres';
+      const categoryName = module.categoryName || 'Autres';
       if (!grouped.has(categoryName)) {
         grouped.set(categoryName, []);
       }

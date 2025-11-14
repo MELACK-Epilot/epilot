@@ -6,7 +6,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { queryClient } from '@/lib/react-query';
 import { validateEnv, logEnvInfo } from '@/lib/validateEnv';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { UserPermissionsProvider } from '@/contexts/UserPermissionsProvider';
+import { PermissionsProvider } from '@/providers/PermissionsProvider';
 
 // Import direct pour éviter les délais de lazy loading
 import LoginPage from './features/auth/pages/LoginPage';
@@ -75,7 +75,7 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <UserPermissionsProvider>
+        <PermissionsProvider>
           <BrowserRouter>
           <RoleBasedRedirect>
           <Routes>
@@ -267,7 +267,7 @@ function App() {
           <Toaster />
           </RoleBasedRedirect>
           </BrowserRouter>
-        </UserPermissionsProvider>
+        </PermissionsProvider>
         
         {/* React Query DevTools (dev only) */}
         <ReactQueryDevtools initialIsOpen={false} />

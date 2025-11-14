@@ -95,7 +95,7 @@ export const MyModulesDebugSimple = () => {
   }, [user?.schoolGroupId]);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6" data-testid="debug-interface">
       {/* Header Debug */}
       <Card className="p-6 bg-yellow-50 border-yellow-200">
         <div className="flex items-center justify-between mb-4">

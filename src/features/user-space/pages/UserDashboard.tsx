@@ -34,7 +34,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { SchoolAlerts } from '../components/SchoolAlerts';
 import { AvailableModules } from '../components/AvailableModules';
-import { useUserModulesContext } from '@/contexts/UserPermissionsProvider';
+import { usePermissions } from '@/providers/PermissionsProvider';
 import { getKPIsForRole } from '../utils/rolePermissions';
 import { EmptyModulesState } from '../components/EmptyModulesState';
 import { NiveauxDetailsModal } from '../components/NiveauxDetailsModal';
@@ -193,7 +193,7 @@ HeroSection.displayName = 'HeroSection';
  * Cartes modules colorées (inspiré de l'image)
  */
 const ModuleCards = memo(() => {
-  const { modules } = useUserModulesContext();
+  const { modules } = usePermissions();
 
   const moduleConfig = useMemo(() => ({
     finances: { 
