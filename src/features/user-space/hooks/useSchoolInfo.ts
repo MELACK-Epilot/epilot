@@ -46,22 +46,80 @@ export const useSchoolInfo = () => {
   });
 
   return useQuery({
-    queryKey: ['school-info', user?.schoolId, user?.schoolGroupId],
-    enabled: !!user?.schoolId && !!user?.schoolGroupId,
+    queryKey: ['school-info', user?.id],
+    enabled: !!user?.id,
     staleTime: 10 * 60 * 1000, // Cache 10 minutes
     queryFn: async (): Promise<SchoolInfo> => {
       console.log('🔍 Fetching school info...');
       
-      if (!user?.schoolId || !user?.schoolGroupId) {
-        console.error('❌ Missing schoolId or schoolGroupId');
-        throw new Error('Informations utilisateur incomplètes');
+      // Si pas de schoolId, récupérer la première école du premier groupe
+      let schoolId = user?.schoolId;
+      let schoolGroupId = user?.schoolGroupId;
+      
+      if (!schoolGroupId) {
+        console.log('⚠️ No schoolGroupId, fetching first school group...');
+        const { data: groups } = await supabase
+          .from('school_groups')
+          .select('id')
+          .limit(1)
+          .maybeSingle();
+        
+        if (groups) {
+          schoolGroupId = (groups as any).id;
+          console.log('✅ Using first school group:', schoolGroupId);
+        }
+      }
+      
+      if (!schoolId && schoolGroupId) {
+        console.log('⚠️ No schoolId, fetching first school from group...');
+        const { data: schools } = await supabase
+          .from('schools')
+          .select('id')
+          .eq('school_group_id', schoolGroupId)
+          .limit(1)
+          .maybeSingle();
+        
+        if (schools) {
+          schoolId = (schools as any).id;
+          console.log('✅ Using first school:', schoolId);
+        }
+      }
+      
+      if (!schoolId || !schoolGroupId) {
+        console.error('❌ Still missing schoolId or schoolGroupId after fallback');
+        // Retourner des données par défaut
+        return {
+          school: {
+            id: 'default',
+            name: 'École',
+            address: undefined,
+            phone: undefined,
+            email: undefined,
+            logo: undefined,
+          },
+          schoolGroup: {
+            id: 'default',
+            name: 'Groupe Scolaire',
+            address: undefined,
+            phone: undefined,
+            email: undefined,
+            logo: undefined,
+          },
+          director: {
+            id: user?.id || 'default',
+            firstName: user?.firstName || 'Directeur',
+            lastName: user?.lastName || '',
+            email: user?.email || '',
+            phone: undefined,
+          },
+        };
       }
 
       // 1. Récupérer les infos de l'école
       const { data: school, error: schoolError } = await supabase
         .from('schools')
         .select('id, name, address, phone, email, logo')
-        .eq('id', user.schoolId)
+        .eq('id', schoolId)
         .single();
 
       if (schoolError || !school) {
@@ -75,7 +133,7 @@ export const useSchoolInfo = () => {
       const { data: schoolGroup, error: groupError } = await supabase
         .from('school_groups')
         .select('id, name, address, phone, email, logo')
-        .eq('id', user.schoolGroupId)
+        .eq('id', schoolGroupId)
         .single();
 
       if (groupError || !schoolGroup) {
@@ -93,7 +151,7 @@ export const useSchoolInfo = () => {
       const { data: director } = await supabase
         .from('users')
         .select('id, first_name, last_name, email, phone')
-        .eq('school_id', user.schoolId)
+        .eq('school_id', schoolId)
         .in('role', ['proviseur', 'directeur'])
         .eq('status', 'active')
         .limit(1)
@@ -101,10 +159,10 @@ export const useSchoolInfo = () => {
 
       // Si pas de proviseur trouvé, utiliser l'utilisateur actuel
       const directorInfo = director || {
-        id: user.id,
-        first_name: user.firstName,
-        last_name: user.lastName,
-        email: user.email,
+        id: user?.id || 'default',
+        first_name: user?.firstName || 'Directeur',
+        last_name: user?.lastName || '',
+        email: user?.email || '',
         phone: undefined,
       };
 
