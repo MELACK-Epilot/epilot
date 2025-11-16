@@ -59,7 +59,12 @@ export const ReportsPage = () => {
   } = useDirectorDashboard();
   
   // Charger les infos de l'école
-  const { data: schoolInfo } = useSchoolInfo();
+  const { data: schoolInfo, isLoading: schoolInfoLoading, error: schoolInfoError } = useSchoolInfo();
+  
+  // Debug: afficher les données
+  console.log('📊 ReportsPage - schoolInfo:', schoolInfo);
+  console.log('⏳ ReportsPage - schoolInfoLoading:', schoolInfoLoading);
+  console.log('❌ ReportsPage - schoolInfoError:', schoolInfoError);
 
   // Charger les filtres depuis le cache
   const [selectedPeriod, setSelectedPeriod] = useState<ReportPeriod>(() => {
@@ -197,7 +202,7 @@ export const ReportsPage = () => {
     setPreviewReport(reportType);
   };
 
-  if (isLoading) {
+  if (isLoading || schoolInfoLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/20 p-6">
         <div className="max-w-7xl mx-auto">
@@ -209,6 +214,11 @@ export const ReportsPage = () => {
               ))}
             </div>
           </div>
+          {schoolInfoLoading && (
+            <div className="mt-4 text-center text-gray-600">
+              Chargement des informations de l'école...
+            </div>
+          )}
         </div>
       </div>
     );
@@ -217,6 +227,23 @@ export const ReportsPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/20 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* DEBUG PANEL - TEMPORARY */}
+        {schoolInfo && (
+          <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 mb-4">
+            <h3 className="font-bold text-yellow-900 mb-2">🔍 DEBUG - Données chargées :</h3>
+            <div className="text-sm space-y-1 text-yellow-800">
+              <p><strong>École:</strong> {schoolInfo.school.name}</p>
+              <p><strong>Adresse:</strong> {schoolInfo.school.address || 'Non renseignée'}</p>
+              <p><strong>Téléphone:</strong> {schoolInfo.school.phone || 'Non renseigné'}</p>
+              <p><strong>Email:</strong> {schoolInfo.school.email || 'Non renseigné'}</p>
+              <p><strong>Groupe:</strong> {schoolInfo.schoolGroup.name}</p>
+              <p><strong>Responsable:</strong> {schoolInfo.director.firstName} {schoolInfo.director.lastName}</p>
+              <p><strong>Email responsable:</strong> {schoolInfo.director.email}</p>
+              <p><strong>Tél responsable:</strong> {schoolInfo.director.phone || 'Non renseigné'}</p>
+            </div>
+          </div>
+        )}
         
         {/* Header */}
         <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm hover:shadow-lg transition-all duration-500 relative overflow-hidden group">
