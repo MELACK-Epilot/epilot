@@ -62,6 +62,7 @@ import { DirectorDashboard } from './features/user-space/pages/DirectorDashboard
 import { PersonnelManagement } from './features/user-space/pages/PersonnelManagement';
 import { StudentsManagement } from './features/user-space/pages/StudentsManagement';
 import { ReportsPage } from './features/user-space/pages/ReportsPage';
+import { ActivityLogsPageReal } from './features/user-space/pages/ActivityLogsPageReal';
 import { ProtectedModuleRoute } from './components/ProtectedModuleRoute';
 import { UserPermissionsProvider } from './contexts/UserPermissionsProvider';
 
@@ -283,6 +284,13 @@ function App() {
             <Route path="reports" element={
               <ProtectedRoute roles={['proviseur', 'directeur', 'directeur_etudes']}>
                 <ReportsPage />
+              </ProtectedRoute>
+            } />
+            
+            {/* Journal d'Activité - Proviseur/Directeur */}
+            <Route path="activity-logs" element={
+              <ProtectedRoute roles={['proviseur', 'directeur', 'directeur_etudes']}>
+                <ActivityLogsPageReal />
               </ProtectedRoute>
             } />
             
