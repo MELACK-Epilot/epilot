@@ -46,7 +46,12 @@ import {
   Eye,
   ArrowUpRight,
   RefreshCw,
-  Info
+  Info,
+  Calendar,
+  MapPin,
+  Download,
+  UserCheck,
+  FileText
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
