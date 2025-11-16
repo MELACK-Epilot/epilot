@@ -61,6 +61,7 @@ import { SchoolGroupPage } from './features/user-space/pages/SchoolGroupPage';
 import { DirectorDashboard } from './features/user-space/pages/DirectorDashboard';
 import { PersonnelManagement } from './features/user-space/pages/PersonnelManagement';
 import { StudentsManagement } from './features/user-space/pages/StudentsManagement';
+import { ReportsPage } from './features/user-space/pages/ReportsPage';
 import { ProtectedModuleRoute } from './components/ProtectedModuleRoute';
 import { UserPermissionsProvider } from './contexts/UserPermissionsProvider';
 
@@ -275,6 +276,13 @@ function App() {
             <Route path="students-management" element={
               <ProtectedRoute roles={['proviseur', 'directeur', 'directeur_etudes', 'cpe', 'secretaire']}>
                 <StudentsManagement />
+              </ProtectedRoute>
+            } />
+            
+            {/* Rapports - Proviseur/Directeur */}
+            <Route path="reports" element={
+              <ProtectedRoute roles={['proviseur', 'directeur', 'directeur_etudes']}>
+                <ReportsPage />
               </ProtectedRoute>
             } />
             
