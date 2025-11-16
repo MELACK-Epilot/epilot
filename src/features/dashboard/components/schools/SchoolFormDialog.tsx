@@ -395,10 +395,55 @@ export function SchoolFormDialog({
       console.log('📝 FormData préparé:', formData);
 
       if (isEditing) {
-        await updateSchool.mutateAsync({
+        // Préparer les données de mise à jour (même structure que création)
+        const updateData = {
           id: school.id,
-          ...formData,
+          name: formData.name,
+          code: formData.code,
+          status: formData.status,
+          
+          // Informations de base
+          address: formData.address || null,
+          phone: formData.phone || null,
+          email: formData.email || null,
+          logo_url: logoUrl || null,
+          couleur_principale: formData.couleur_principale || '#1D3557',
+          
+          // Localisation
+          departement: formData.departement || null,
+          city: formData.city || null,
+          commune: formData.commune || null,
+          code_postal: formData.code_postal || null,
+          pays: formData.pays || 'Congo',
+          region: formData.region || null,
+          
+          // Type et année
+          type_etablissement: formData.type_etablissement || 'prive',
+          annee_ouverture: formData.annee_ouverture ? parseInt(formData.annee_ouverture) : null,
+          description: formData.description || null,
+          
+          // Contacts
+          telephone_fixe: formData.telephone_fixe || null,
+          telephone_mobile: formData.telephone_mobile || null,
+          email_institutionnel: formData.email_institutionnel || null,
+          site_web: formData.site_web || null,
+          
+          // ⭐ NIVEAUX D'ENSEIGNEMENT - CRUCIAL !
+          has_preschool: formData.has_preschool,
+          has_primary: formData.has_primary,
+          has_middle: formData.has_middle,
+          has_high: formData.has_high,
+        };
+        
+        console.log('📝 Données de mise à jour:', updateData);
+        console.log('🎯 Niveaux à mettre à jour:', {
+          has_preschool: updateData.has_preschool,
+          has_primary: updateData.has_primary,
+          has_middle: updateData.has_middle,
+          has_high: updateData.has_high,
         });
+        
+        await updateSchool.mutateAsync(updateData as any);
         toast.success('École mise à jour avec succès');
       } else {
         // Préparer les données pour l'insertion

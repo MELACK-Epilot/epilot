@@ -1,5 +1,6 @@
 /**
  * Composant pour afficher les KPI du Proviseur
+ * Connecté aux données réelles via useProviseurModules
  * @module ProviseurKPICards
  */
 
@@ -12,6 +13,8 @@ interface ProviseurKPICardsProps {
   activeModules: number;
   totalAccess: number;
   categoriesCount: number;
+  lastAccessDate?: string | null;
+  growthRate?: number;
 }
 
 export function ProviseurKPICards({
@@ -19,21 +22,44 @@ export function ProviseurKPICards({
   activeModules,
   totalAccess,
   categoriesCount,
+  lastAccessDate,
+  growthRate = 0,
 }: ProviseurKPICardsProps) {
+  // Formater la date de dernière activité
+  const formatLastActivity = (date: string | null | undefined) => {
+    if (!date) return 'Aucune activité';
+    
+    const activityDate = new Date(date);
+    const now = new Date();
+    const diffMs = now.getTime() - activityDate.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffHours < 1) return 'À l\'instant';
+    if (diffHours < 24) return `Il y a ${diffHours}h`;
+    if (diffDays === 1) return 'Hier';
+    if (diffDays < 7) return `Il y a ${diffDays}j`;
+    
+    return activityDate.toLocaleDateString('fr-FR', { 
+      day: 'numeric', 
+      month: 'short' 
+    });
+  };
+
   const kpis: KPIData[] = [
     {
       title: 'Modules Actifs',
       value: activeModules,
       change: `${totalModules} au total`,
-      trend: 'up',
+      trend: activeModules > 0 ? 'up' : 'neutral',
       icon: <Activity className="w-5 h-5" />,
       color: '#3B82F6',
     },
     {
       title: 'Accès Total',
       value: totalAccess,
-      change: '+12% ce mois',
-      trend: 'up',
+      change: growthRate > 0 ? `+${growthRate}% ce mois` : 'Stable',
+      trend: growthRate > 0 ? 'up' : growthRate < 0 ? 'down' : 'neutral',
       icon: <Eye className="w-5 h-5" />,
       color: '#10B981',
     },
@@ -47,9 +73,9 @@ export function ProviseurKPICards({
     },
     {
       title: 'Dernière Activité',
-      value: 'Aujourd\'hui',
-      change: 'Actif',
-      trend: 'up',
+      value: formatLastActivity(lastAccessDate),
+      change: lastAccessDate ? 'Actif' : 'Inactif',
+      trend: lastAccessDate ? 'up' : 'neutral',
       icon: <Calendar className="w-5 h-5" />,
       color: '#8B5CF6',
     },

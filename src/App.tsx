@@ -58,6 +58,9 @@ import { ClassesPage } from './features/user-space/pages/ClassesPage';
 import { StaffPage } from './features/user-space/pages/StaffPage';
 import { StudentsPage } from './features/user-space/pages/StudentsPage';
 import { SchoolGroupPage } from './features/user-space/pages/SchoolGroupPage';
+import { DirectorDashboardOptimized } from './features/user-space/pages/DirectorDashboardOptimized';
+import { PersonnelManagement } from './features/user-space/pages/PersonnelManagement';
+import { StudentsManagement } from './features/user-space/pages/StudentsManagement';
 import { ProtectedModuleRoute } from './components/ProtectedModuleRoute';
 
 // Composant de chargement
@@ -250,6 +253,27 @@ function App() {
             <Route path="schedule" element={<MySchedule />} />
             <Route path="modules" element={<MyModules />} />
             <Route path="categories" element={<MyCategories />} />
+            
+            {/* Dashboard Directeur/Proviseur - Vue d'ensemble école */}
+            <Route path="dashboard-director" element={
+              <ProtectedRoute roles={['proviseur', 'directeur', 'directeur_etudes']}>
+                <DirectorDashboardOptimized />
+              </ProtectedRoute>
+            } />
+            
+            {/* Gestion Personnel - Proviseur/Directeur */}
+            <Route path="personnel-management" element={
+              <ProtectedRoute roles={['proviseur', 'directeur', 'directeur_etudes']}>
+                <PersonnelManagement />
+              </ProtectedRoute>
+            } />
+            
+            {/* Gestion Élèves - Proviseur/Directeur */}
+            <Route path="students-management" element={
+              <ProtectedRoute roles={['proviseur', 'directeur', 'directeur_etudes', 'cpe', 'secretaire']}>
+                <StudentsManagement />
+              </ProtectedRoute>
+            } />
             
             {/* ⭐ Routes Dynamiques pour les Modules */}
             <Route path="modules/:moduleSlug" element={

@@ -640,8 +640,21 @@ export const UserDashboard = () => {
   }
 
   // Rendu selon le rôle
+  // 🔍 DEBUG - Logs pour identifier le problème de rôle
+  console.log('🔍 UserDashboard - Diagnostic Rôle:', {
+    role: user.role,
+    roleType: typeof user.role,
+    roleLength: user.role?.length,
+    roleTrimmed: user.role?.trim(),
+    isProviseur: user.role === 'proviseur',
+    includesProviseur: ['proviseur', 'directeur', 'directeur_etudes'].includes(user.role),
+    schoolId: user.schoolId,
+    email: user.email,
+  });
+
   // Dashboard PROVISEUR/DIRECTEUR - Version Optimisée
   if (['proviseur', 'directeur', 'directeur_etudes'].includes(user.role)) {
+    console.log('✅ Affichage DirectorDashboardOptimized pour rôle:', user.role);
     return <DirectorDashboardOptimized />;
   }
 

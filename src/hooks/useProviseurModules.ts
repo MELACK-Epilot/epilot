@@ -77,6 +77,10 @@ export const useProviseurModules = () => {
   // Query pour récupérer tous les modules du Proviseur
   const modulesQuery = useQuery({
     queryKey: ['proviseur-modules', user?.id],
+    enabled: !!user?.id, // ⚡ Ne charge que si user existe
+    staleTime: 5 * 60 * 1000, // ⚡ Cache 5 minutes
+    gcTime: 10 * 60 * 1000, // ⚡ Garde en mémoire 10 minutes
+    refetchOnWindowFocus: false, // ⚡ Pas de refetch au focus
     queryFn: async (): Promise<ProviseurModule[]> => {
       if (!user?.id) throw new Error('Utilisateur non authentifié');
 
@@ -155,9 +159,6 @@ export const useProviseurModules = () => {
       console.log('✅ [useProviseurModules] Modules chargés:', modules.length);
       return modules;
     },
-    enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
   // Query pour les statistiques

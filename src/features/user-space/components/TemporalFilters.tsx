@@ -112,14 +112,14 @@ const TemporalFilters = memo(({
     <Card className={`p-4 bg-white border-0 shadow-lg rounded-2xl ${className}`}>
       <div className="flex items-center justify-between">
         {/* Section principale */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-sm">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
               <Filter className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Filtres Temporels</h3>
-              <p className="text-sm text-gray-600">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-gray-900 truncate">Filtres Temporels</h3>
+              <p className="text-sm text-gray-600 truncate">
                 {currentPeriodOption?.description} • {currentRangeOption?.label}
               </p>
             </div>

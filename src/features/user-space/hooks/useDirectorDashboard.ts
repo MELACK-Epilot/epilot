@@ -6,6 +6,8 @@
 import { useState, useCallback, useMemo, useEffect, startTransition } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/features/auth/store/auth.store';
+import { loadSchoolLevels as loadLevelsModule } from './dashboard/loadSchoolLevels';
+import { loadTrendData as loadTrendDataModule } from './dashboard/loadTrendData';
 
 // Types pour les données du dashboard
 export interface SchoolLevel {
@@ -65,90 +67,201 @@ export function useDirectorDashboard() {
     lastUpdated: null,
   });
 
-  // Charger les données des niveaux scolaires
+  // Charger les données des niveaux scolaires DYNAMIQUEMENT depuis la BDD
   const loadSchoolLevels = useCallback(async () => {
-    if (!user?.schoolGroupId) return;
+    console.log('🔍 DEBUG loadSchoolLevels - user:', {
+      userId: user?.id,
+      email: user?.email,
+      role: user?.role,
+      schoolId: user?.schoolId,
+      hasSchoolId: !!user?.schoolId
+    });
+
+    if (!user?.schoolId) {
+      console.error('⚠️ Pas de schoolId, chargement annulé');
+      console.error('⚠️ User complet:', user);
+      return [];
+    }
 
     try {
-      // Requête pour récupérer les niveaux avec leurs statistiques
-      const { data: levelsData, error: levelsError } = await supabase
-        .from('school_levels')
-        .select(`
-          id,
-          name,
-          color,
-          icon,
-          school_group_id
-        `)
-        .eq('school_group_id', user.schoolGroupId)
-        .eq('status', 'active');
+      console.log('🔄 Chargement dashboard pour école:', user.schoolId);
+      
+      // ✅ Utiliser le module externe (import statique)
+      return await loadLevelsModule({ schoolId: user.schoolId });
+    } catch (error) {
+      console.error('❌ Erreur lors du chargement des niveaux:', error);
+      throw error;
+    }
+  }, [user?.schoolId]);
 
-      if (levelsError) throw levelsError;
+  // ANCIEN CODE - À SUPPRIMER APRÈS VÉRIFICATION
+  const loadSchoolLevelsOLD = useCallback(async () => {
+    if (!user?.schoolId) return [];
 
-      // Pour chaque niveau, calculer les KPIs
+    try {
+      console.log('🔄 Chargement dashboard pour école (OLD):', user.schoolId);
+      
+      // ✅ Récupérer les niveaux actifs de l'école depuis la table schools
+      const { data: schoolData, error: schoolError } = await supabase
+        .from('schools')
+        .select('has_preschool, has_primary, has_middle, has_high')
+        .eq('id', user.schoolId)
+        .single<{
+          has_preschool: boolean;
+          has_primary: boolean;
+          has_middle: boolean;
+          has_high: boolean;
+        }>();
+
+      if (schoolError) {
+        console.error('❌ Erreur récupération niveaux école:', schoolError);
+        throw schoolError;
+      }
+
+      if (!schoolData) {
+        console.warn('⚠️ École non trouvée');
+        return [];
+      }
+
+      console.log('🏫 Niveaux actifs de l\'école:', schoolData);
+      
+      // Mapping des niveaux avec leurs propriétés visuelles
+      const niveauxMapping = [
+        { 
+          key: 'has_preschool', 
+          id: 'maternelle', 
+          name: 'Maternelle', 
+          color: 'bg-[#1D3557]', 
+          icon: 'Baby', 
+          level_key: 'maternelle',
+          enabled: schoolData.has_preschool 
+        },
+        { 
+          key: 'has_primary', 
+          id: 'primaire', 
+          name: 'Primaire', 
+          color: 'bg-[#2A9D8F]', 
+          icon: 'BookOpen', 
+          level_key: 'primaire',
+          enabled: schoolData.has_primary 
+        },
+        { 
+          key: 'has_middle', 
+          id: 'college', 
+          name: 'Collège', 
+          color: 'bg-[#E9C46A]', 
+          icon: 'Building2', 
+          level_key: 'college',
+          enabled: schoolData.has_middle 
+        },
+        { 
+          key: 'has_high', 
+          id: 'lycee', 
+          name: 'Lycée', 
+          color: 'bg-[#E63946]', 
+          icon: 'GraduationCap', 
+          level_key: 'lycee',
+          enabled: schoolData.has_high 
+        },
+      ];
+
+      // Filtrer uniquement les niveaux actifs pour cette école
+      const niveauxActifs = niveauxMapping.filter(niveau => niveau.enabled);
+      
+      console.log(`✅ ${niveauxActifs.length} niveau(x) actif(s):`, niveauxActifs.map(n => n.name).join(', '));
+
       const schoolLevels: SchoolLevel[] = [];
       
-      for (const level of levelsData || []) {
-        // Compter les étudiants par niveau
+      // Boucler uniquement sur les niveaux actifs de l'école
+      for (const niveau of niveauxActifs) {
+        // Compter les étudiants par niveau depuis la table students
         const { count: studentsCount } = await supabase
           .from('students')
           .select('*', { count: 'exact', head: true })
-          .eq('school_level_id', level.id)
+          .eq('school_id', user.schoolId)
+          .eq('level', niveau.level_key)
           .eq('status', 'active');
 
-        // Compter les classes par niveau
+        // Compter les classes par niveau depuis la table classes
         const { count: classesCount } = await supabase
           .from('classes')
           .select('*', { count: 'exact', head: true })
-          .eq('school_level_id', level.id)
+          .eq('school_id', user.schoolId)
+          .ilike('level', `%${niveau.level_key}%`)
           .eq('status', 'active');
 
-        // Compter les enseignants par niveau (via les classes)
+        // Compter les enseignants actifs (via la table users avec role enseignant)
         const { data: teachersData } = await supabase
-          .from('classes')
-          .select('teacher_id')
-          .eq('school_level_id', level.id)
+          .from('users')
+          .select('id')
+          .eq('school_id', user.schoolId)
+          .eq('role', 'enseignant')
           .eq('status', 'active');
 
-        const uniqueTeachers = new Set(teachersData?.map(t => t.teacher_id).filter(Boolean));
+        const teachersCount = teachersData?.length || 0;
 
-        // Calculer le taux de réussite (simulé pour l'instant)
-        const successRate = Math.floor(Math.random() * 20) + 75; // 75-95%
+        // Calculer le taux de réussite (simulé pour l'instant - TODO: implémenter avec vraies notes)
+        const successRate = Math.floor(Math.random() * 15) + 80; // 80-95%
 
-        // Calculer les revenus (basé sur les paiements)
+        // Calculer les revenus du mois (basé sur fee_payments)
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
         const { data: paymentsData } = await supabase
-          .from('payments')
+          .from('fee_payments')
           .select('amount')
-          .eq('school_level_id', level.id)
-          .eq('status', 'completed')
-          .gte('created_at', new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString());
+          .eq('school_id', user.schoolId)
+          .in('status', ['paid', 'completed'])
+          .gte('created_at', startOfMonth.toISOString());
 
-        const revenue = paymentsData?.reduce((sum, payment) => sum + (payment.amount || 0), 0) || 0;
+        const revenue = paymentsData?.reduce((sum, payment: any) => sum + (payment.amount || 0), 0) || 0;
 
-        schoolLevels.push({
-          id: level.id,
-          name: level.name,
-          color: level.color || 'bg-blue-500',
-          icon: level.icon || 'GraduationCap',
-          students_count: studentsCount || 0,
-          classes_count: classesCount || 0,
-          teachers_count: uniqueTeachers.size,
-          success_rate: successRate,
-          revenue,
-          trend: Math.random() > 0.3 ? 'up' : Math.random() > 0.5 ? 'stable' : 'down',
-        });
+        // Calculer la tendance (comparaison avec le mois dernier)
+        const lastMonth = new Date();
+        lastMonth.setMonth(lastMonth.getMonth() - 1);
+        lastMonth.setDate(1);
+        lastMonth.setHours(0, 0, 0, 0);
+
+        const { count: lastMonthStudents } = await supabase
+          .from('students')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', user.schoolId)
+          .eq('level', niveau.level_key)
+          .eq('status', 'active')
+          .lt('created_at', startOfMonth.toISOString());
+
+        const trend = (studentsCount || 0) > (lastMonthStudents || 0) ? 'up' : 
+                     (studentsCount || 0) < (lastMonthStudents || 0) ? 'down' : 'stable';
+
+        // N'ajouter que les niveaux qui ont des données
+        if (studentsCount || classesCount) {
+          schoolLevels.push({
+            id: niveau.id,
+            name: niveau.name,
+            color: niveau.color,
+            icon: niveau.icon,
+            students_count: studentsCount || 0,
+            classes_count: classesCount || 0,
+            teachers_count: teachersCount,
+            success_rate: successRate,
+            revenue,
+            trend,
+          });
+        }
       }
 
+      console.log('✅ Niveaux chargés:', schoolLevels.length);
       return schoolLevels;
     } catch (error) {
-      console.error('Erreur lors du chargement des niveaux:', error);
+      console.error('❌ Erreur lors du chargement des niveaux:', error);
       throw error;
     }
-  }, [user?.schoolGroupId]);
+  }, [user?.schoolId]);
 
   // Charger les KPIs globaux
   const loadGlobalKPIs = useCallback(async (schoolLevels: SchoolLevel[]) => {
-    if (!user?.schoolGroupId) return null;
+    if (!user?.schoolId) return null;
 
     try {
       // Calculer les totaux à partir des niveaux
@@ -167,8 +280,23 @@ export function useDirectorDashboard() {
         ? Math.round(schoolLevels.reduce((sum, level) => sum + level.success_rate, 0) / schoolLevels.length)
         : 0;
 
-      // Calculer la croissance mensuelle (simulée)
-      const monthlyGrowth = Math.floor(Math.random() * 10) + 2; // 2-12%
+      // Calculer la croissance mensuelle réelle
+      // Comparer le total d'élèves actuel avec le mois dernier
+      const lastMonth = new Date();
+      lastMonth.setMonth(lastMonth.getMonth() - 1);
+      lastMonth.setDate(1);
+      lastMonth.setHours(0, 0, 0, 0);
+
+      const { count: lastMonthTotal } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .eq('school_id', user.schoolId)
+        .eq('status', 'active')
+        .lt('created_at', new Date().toISOString().slice(0, 7) + '-01');
+
+      const monthlyGrowth = lastMonthTotal && lastMonthTotal > 0
+        ? Math.round(((totals.totalStudents - lastMonthTotal) / lastMonthTotal) * 100)
+        : 0;
 
       return {
         ...totals,
@@ -179,68 +307,23 @@ export function useDirectorDashboard() {
       console.error('Erreur lors du calcul des KPIs globaux:', error);
       throw error;
     }
-  }, [user?.schoolGroupId]);
+  }, [user?.schoolId]);
 
-  // Charger les données de tendance
+  // ✅ Charger les données de tendance avec VRAIES NOTES (module externe)
   const loadTrendData = useCallback(async () => {
-    if (!user?.schoolGroupId) return [];
+    if (!user?.schoolId) return [];
 
     try {
-      // Générer des données de tendance pour les 6 derniers mois
-      const trendData: TrendData[] = [];
-      const now = new Date();
-
-      for (let i = 5; i >= 0; i--) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const period = date.toISOString().slice(0, 7); // YYYY-MM
-
-        // Requête pour les étudiants actifs ce mois-là
-        const { count: studentsCount } = await supabase
-          .from('students')
-          .select('*', { count: 'exact', head: true })
-          .eq('school_group_id', user.schoolGroupId)
-          .eq('status', 'active')
-          .lte('created_at', new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString());
-
-        // Requête pour les revenus de ce mois
-        const { data: paymentsData } = await supabase
-          .from('payments')
-          .select('amount')
-          .eq('school_group_id', user.schoolGroupId)
-          .eq('status', 'completed')
-          .gte('created_at', date.toISOString())
-          .lt('created_at', new Date(date.getFullYear(), date.getMonth() + 1, 1).toISOString());
-
-        const revenue = paymentsData?.reduce((sum, payment) => sum + (payment.amount || 0), 0) || 0;
-
-        // Requête pour les enseignants actifs
-        const { count: teachersCount } = await supabase
-          .from('users')
-          .select('*', { count: 'exact', head: true })
-          .eq('school_group_id', user.schoolGroupId)
-          .eq('role', 'enseignant')
-          .eq('status', 'active')
-          .lte('created_at', new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString());
-
-        trendData.push({
-          period,
-          students: studentsCount || 0,
-          success_rate: Math.floor(Math.random() * 15) + 80, // 80-95%
-          revenue,
-          teachers: teachersCount || 0,
-        });
-      }
-
-      return trendData;
+      return await loadTrendDataModule({ schoolId: user.schoolId });
     } catch (error) {
-      console.error('Erreur lors du chargement des tendances:', error);
+      console.error('❌ Erreur lors du chargement des tendances:', error);
       return [];
     }
-  }, [user?.schoolGroupId]);
+  }, [user?.schoolId]);
 
   // Fonction principale de chargement
   const loadDashboardData = useCallback(async () => {
-    if (!user?.schoolGroupId) return;
+    if (!user?.schoolId) return;
 
     startTransition(() => {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -268,91 +351,20 @@ export function useDirectorDashboard() {
       });
 
     } catch (error) {
-      console.error('Erreur lors du chargement du dashboard:', error);
+      console.error('❌ Erreur critique lors du chargement du dashboard:', error);
       
-      // Fallback vers des données mockées
-      const mockSchoolLevels: SchoolLevel[] = [
-        {
-          id: 'prescolaire',
-          name: 'Préscolaire',
-          color: 'bg-[#1D3557]',
-          icon: 'GraduationCap',
-          students_count: 45,
-          classes_count: 3,
-          teachers_count: 4,
-          success_rate: 92,
-          revenue: 450000,
-          trend: 'up',
-        },
-        {
-          id: 'primaire',
-          name: 'Primaire',
-          color: 'bg-[#2A9D8F]',
-          icon: 'BookOpen',
-          students_count: 180,
-          classes_count: 8,
-          teachers_count: 12,
-          success_rate: 87,
-          revenue: 1800000,
-          trend: 'up',
-        },
-        {
-          id: 'college',
-          name: 'Collège',
-          color: 'bg-[#E9C46A]',
-          icon: 'Building2',
-          students_count: 240,
-          classes_count: 12,
-          teachers_count: 18,
-          success_rate: 82,
-          revenue: 2400000,
-          trend: 'stable',
-        },
-        {
-          id: 'lycee',
-          name: 'Lycée',
-          color: 'bg-[#E63946]',
-          icon: 'GraduationCap',
-          students_count: 160,
-          classes_count: 8,
-          teachers_count: 16,
-          success_rate: 78,
-          revenue: 1600000,
-          trend: 'down',
-        },
-      ];
-
-      const mockGlobalKPIs = {
-        totalStudents: 625,
-        totalClasses: 31,
-        totalTeachers: 50,
-        averageSuccessRate: 85,
-        totalRevenue: 6250000,
-        monthlyGrowth: 8,
-      };
-
-      const mockTrendData: TrendData[] = [
-        { period: '2024-07', students: 580, success_rate: 82, revenue: 5200000, teachers: 48 },
-        { period: '2024-08', students: 595, success_rate: 84, revenue: 5400000, teachers: 49 },
-        { period: '2024-09', students: 610, success_rate: 86, revenue: 5600000, teachers: 50 },
-        { period: '2024-10', students: 620, success_rate: 85, revenue: 5750000, teachers: 50 },
-        { period: '2024-11', students: 625, success_rate: 87, revenue: 5850000, teachers: 50 },
-        { period: '2024-12', students: 625, success_rate: 85, revenue: 6250000, teachers: 50 },
-      ];
-
+      // ✅ Ne plus afficher de fausses données, mais un message d'erreur clair
       startTransition(() => {
         setState(prev => ({
           ...prev,
-          schoolLevels: mockSchoolLevels,
-          globalKPIs: mockGlobalKPIs,
-          trendData: mockTrendData,
+          schoolLevels: [],
           isLoading: false,
-          error: 'Utilisation des données de démonstration',
-          lastUpdated: new Date(),
+          error: 'Impossible de charger les données. Vérifiez votre connexion et réessayez.',
+          lastUpdated: null,
         }));
       });
     }
-  }, [user?.schoolGroupId, loadSchoolLevels, loadGlobalKPIs, loadTrendData]);
+  }, [user?.schoolId, loadSchoolLevels, loadGlobalKPIs, loadTrendData]);
 
   // Rafraîchir les données
   const refreshData = useCallback(() => {
@@ -361,14 +373,17 @@ export function useDirectorDashboard() {
 
   // Chargement initial
   useEffect(() => {
-    if (user?.schoolGroupId) {
+    if (user?.schoolId) {
+      console.log('🚀 Chargement initial du dashboard pour l\'\u00e9cole:', user.schoolId);
       loadDashboardData();
     }
-  }, [user?.schoolGroupId, loadDashboardData]);
+  }, [user?.schoolId, loadDashboardData]);
 
   // Écoute temps réel des changements
   useEffect(() => {
-    if (!user?.schoolGroupId) return;
+    if (!user?.schoolId) return;
+
+    console.log('🔊 Activation des écoutes temps réel pour l\'\u00e9cole:', user.schoolId);
 
     const channel = supabase
       .channel('director_dashboard_realtime')
@@ -378,10 +393,10 @@ export function useDirectorDashboard() {
           event: '*',
           schema: 'public',
           table: 'students',
-          filter: `school_group_id=eq.${user.schoolGroupId}`,
+          filter: `school_id=eq.${user.schoolId}`,
         },
         () => {
-          console.log('Changement détecté dans les étudiants, rechargement...');
+          console.log('🔄 Changement détecté dans les étudiants, rechargement...');
           refreshData();
         }
       )
@@ -391,10 +406,10 @@ export function useDirectorDashboard() {
           event: '*',
           schema: 'public',
           table: 'classes',
-          filter: `school_group_id=eq.${user.schoolGroupId}`,
+          filter: `school_id=eq.${user.schoolId}`,
         },
         () => {
-          console.log('Changement détecté dans les classes, rechargement...');
+          console.log('🔄 Changement détecté dans les classes, rechargement...');
           refreshData();
         }
       )
@@ -403,20 +418,21 @@ export function useDirectorDashboard() {
         {
           event: '*',
           schema: 'public',
-          table: 'payments',
-          filter: `school_group_id=eq.${user.schoolGroupId}`,
+          table: 'fee_payments',
+          filter: `school_id=eq.${user.schoolId}`,
         },
         () => {
-          console.log('Changement détecté dans les paiements, rechargement...');
+          console.log('🔄 Changement détecté dans les paiements, rechargement...');
           refreshData();
         }
       )
       .subscribe();
 
     return () => {
+      console.log('🔌 Déconnexion des écoutes temps réel');
       supabase.removeChannel(channel);
     };
-  }, [user?.schoolGroupId, refreshData]);
+  }, [user?.schoolId, refreshData]);
 
   // Statistiques calculées
   const stats = useMemo(() => {

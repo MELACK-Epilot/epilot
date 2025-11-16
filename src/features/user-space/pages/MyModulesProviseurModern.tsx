@@ -5,12 +5,14 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Package } from 'lucide-react';
+import { Package, BarChart3 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/store/auth.store';
 import { useProviseurModules, type ProviseurModule } from '@/hooks/useProviseurModules';
 import { ProviseurKPICards } from '../components/ProviseurKPICards';
 import { ModuleFilters } from '../components/ModuleFilters';
 import { ModuleGrid } from '../components/ModuleGrid';
+import { Button } from '@/components/ui/button';
 import { mapIconNameToComponent, getModuleIcon, getCategoryColor, getModuleDescription } from '../utils/module-helpers';
 import { useModuleNavigation } from '../utils/module-navigation';
 import type { ModuleEnrichi, ViewMode, SortOption } from '../types/proviseur-modules.types';
@@ -64,7 +66,8 @@ function sortModules(a: ModuleEnrichi, b: ModuleEnrichi, sortBy: SortOption): nu
  */
 export default function MyModulesProviseurModern() {
   const { user } = useAuth();
-  const { modules, isLoading, error } = useProviseurModules();
+  const navigate = useNavigate();
+  const { modules, stats, isLoading, error } = useProviseurModules();
   const { navigateToModule } = useModuleNavigation();
   
   // États pour l'interface
@@ -95,13 +98,15 @@ export default function MyModulesProviseurModern() {
       .sort((a, b) => sortModules(a, b, sortBy));
   }, [modulesEnrichis, searchQuery, selectedCategory, sortBy]);
 
-  // Calculer les stats pour les KPI
+  // Calculer les stats pour les KPI avec données réelles
   const kpiStats = useMemo(() => ({
-    totalModules: modules.length,
-    activeModules: modules.filter(m => m.is_enabled).length,
-    totalAccess: modules.reduce((sum, m) => sum + m.access_count, 0),
-    categoriesCount: categories.length,
-  }), [modules, categories]);
+    totalModules: stats?.totalModules || modules.length,
+    activeModules: stats?.modulesActifs || modules.filter(m => m.is_enabled).length,
+    totalAccess: stats?.totalAccess || modules.reduce((sum, m) => sum + m.access_count, 0),
+    categoriesCount: stats?.categoriesCount || categories.length,
+    lastAccessDate: stats?.lastAccessDate || null,
+    growthRate: 12, // TODO: Calculer le vrai taux de croissance
+  }), [modules, categories, stats]);
 
   // Gérer le clic sur un module avec navigation automatique
   const handleModuleClick = (module: ModuleEnrichi) => {
@@ -127,18 +132,31 @@ export default function MyModulesProviseurModern() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <Package className="w-7 h-7 text-white" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <Package className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Mes Modules
+                </h1>
+                <p className="text-gray-600">
+                  Bienvenue {user?.firstName} {user?.lastName}
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Mes Modules
-              </h1>
-              <p className="text-gray-600">
-                Bienvenue {user?.firstName} {user?.lastName}
-              </p>
-            </div>
+            
+            {/* Bouton Dashboard Directeur */}
+            {user?.role && ['proviseur', 'directeur', 'directeur_etudes'].includes(user.role.toString()) && (
+              <Button
+                onClick={() => navigate('/user/dashboard-director')}
+                className="bg-gradient-to-r from-[#2A9D8F] to-[#238b7e] hover:from-[#238b7e] hover:to-[#1d7a6f] text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Vue d'Ensemble École
+              </Button>
+            )}
           </div>
         </div>
 

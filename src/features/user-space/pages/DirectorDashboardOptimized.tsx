@@ -57,11 +57,13 @@ import {
   MoreHorizontal,
   Eye,
   ArrowUpRight,
-  RefreshCw
+  RefreshCw,
+  Info
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useDirectorDashboard } from '../hooks/useDirectorDashboard';
 
@@ -280,8 +282,8 @@ KPICard.displayName = 'KPICard';
  */
 const getNiveauDesign = (niveauId: string) => {
   const designs = {
-    prescolaire: {
-      // Design Bleu Foncé Institutionnel (#1D3557) pour le préscolaire
+    maternelle: {
+      // Design Bleu Foncé Institutionnel (#1D3557) pour la maternelle
       eleves: {
         gradient: "from-[#1D3557] via-[#2A4A6F] to-[#0d1f3d]",
         iconBg: "bg-[#1D3557]/20",
@@ -389,56 +391,55 @@ const NiveauSection = memo(({
   isExpanded?: boolean;
   onNiveauClick?: (niveau: NiveauEducatif) => void;
 }) => {
-  const [expanded, setExpanded] = useState(isExpanded);
   const design = getNiveauDesign(niveau.id);
 
   return (
-    <Card className="p-6 mb-6 border-0 shadow-sm bg-white">
-      {/* En-tête du niveau */}
-      <div className="flex items-center justify-between mb-6">
+    <Card className="p-6 mb-6 border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white via-gray-50/30 to-white relative overflow-hidden group">
+      {/* Éléments décoratifs subtils */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-100/20 to-transparent rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-500"></div>
+      <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-indigo-100/15 to-transparent rounded-full -ml-12 -mb-12 group-hover:scale-110 transition-transform duration-700"></div>
+      
+      {/* En-tête du niveau avec badge de revenus */}
+      <div className="relative z-10 flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
-          <div className={`p-3 rounded-2xl ${niveau.couleur} shadow-sm`}>
-            <niveau.icone className="h-7 w-7 text-white" />
+          <div className={`p-4 rounded-2xl ${niveau.couleur} shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all duration-300`}>
+            <niveau.icone className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900">{niveau.nom}</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {niveau.kpis.eleves} élèves • {niveau.kpis.classes} classes • {niveau.kpis.enseignants} enseignants
-            </p>
+            <h2 className="text-2xl font-bold text-gray-900 group-hover:text-[#2A9D8F] transition-colors duration-300">{niveau.nom}</h2>
+            <div className="flex items-center gap-3 mt-2">
+              <p className="text-sm text-gray-600 font-medium">
+                {niveau.kpis.eleves} élèves • {niveau.kpis.classes} classes • {niveau.kpis.enseignants} enseignants
+              </p>
+              <Badge className="bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 border-emerald-200 px-3 py-1 shadow-sm">
+                💰 {(niveau.kpis.revenus / 1000000).toFixed(2)}M FCFA
+              </Badge>
+            </div>
           </div>
         </div>
         
         <div className="flex items-center gap-3">
           <Badge 
             variant="outline" 
-            className={`${niveau.kpis.taux_reussite >= 80 ? 'bg-green-50 text-green-700 border-green-200' : 'bg-orange-50 text-orange-700 border-orange-200'}`}
+            className={`${niveau.kpis.taux_reussite >= 80 ? 'bg-green-50 text-green-700 border-green-200' : 'bg-orange-50 text-orange-700 border-orange-200'} px-4 py-2 font-semibold shadow-sm`}
           >
-            {niveau.kpis.taux_reussite >= 80 ? 'Performant' : 'À surveiller'}
+            {niveau.kpis.taux_reussite >= 80 ? '✓ Performant' : '⚠ À surveiller'}
           </Badge>
           <Button 
             variant="ghost" 
             size="sm" 
-            className="gap-2"
+            className="gap-2 hover:bg-[#2A9D8F] hover:text-white transition-colors"
             onClick={() => onNiveauClick?.(niveau)}
           >
             <Eye className="h-4 w-4" />
-            Détails
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => setExpanded(!expanded)}
-            className="gap-2"
-          >
-            <MoreHorizontal className="h-4 w-4" />
+            Voir Détails
           </Button>
         </div>
       </div>
 
-      {/* KPI du niveau avec designs différenciés par niveau */}
-      {expanded && (
-        <div className="mt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPI du niveau - TOUJOURS VISIBLES avec designs différenciés */}
+      <div className="relative z-10 mt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <KPICard
               title="Élèves"
               value={niveau.kpis.eleves}
@@ -486,9 +487,8 @@ const NiveauSection = memo(({
               iconColor={design.taux.iconColor}
               clickable
             />
-          </div>
         </div>
-      )}
+      </div>
     </Card>
   );
 });
@@ -519,13 +519,17 @@ export const DirectorDashboardOptimized = memo(() => {
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
 
   // Conversion des données réelles vers le format attendu
-  const niveauxEducatifs: NiveauEducatif[] = useMemo(() => 
-    schoolLevels.map(level => ({
+  const niveauxEducatifs: NiveauEducatif[] = useMemo(() => {
+    console.log('🔍 DirectorDashboard - schoolLevels reçus:', schoolLevels);
+    console.log('🔍 DirectorDashboard - Nombre de niveaux:', schoolLevels.length);
+    
+    const converted = schoolLevels.map(level => ({
       id: level.id,
       nom: level.name,
       couleur: level.color,
       icone: level.icon === 'BookOpen' ? BookOpen : 
              level.icon === 'Building2' ? Building2 : 
+             level.icon === 'Baby' ? GraduationCap :
              GraduationCap,
       kpis: {
         eleves: level.students_count,
@@ -535,7 +539,11 @@ export const DirectorDashboardOptimized = memo(() => {
         revenus: level.revenue,
         trend: level.trend
       }
-    })), [schoolLevels]);
+    }));
+    
+    console.log('✅ DirectorDashboard - niveauxEducatifs convertis:', converted);
+    return converted;
+  }, [schoolLevels]);
 
   // KPI globaux de l'école (utilise les données réelles)
   const kpiGlobaux = useMemo(() => ({
@@ -556,30 +564,64 @@ export const DirectorDashboardOptimized = memo(() => {
       enseignants: data.teachers
     })), [realTrendData]);
 
-  // Données pour les comparaisons temporelles
-  const currentPeriodData = useMemo(() => ({
-    period: '2024-11',
-    label: 'Novembre 2024',
-    data: {
-      eleves: kpiGlobaux.eleves,
-      classes: kpiGlobaux.classes,
-      enseignants: kpiGlobaux.enseignants,
-      taux_reussite: kpiGlobaux.taux_reussite,
-      revenus: kpiGlobaux.revenus
-    }
-  }), [kpiGlobaux]);
+  // ✅ Données pour les comparaisons temporelles (RÉELLES depuis trendData)
+  const currentPeriodData = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.toISOString().slice(0, 7); // Format: YYYY-MM
+    const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 
+                        'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    
+    return {
+      period: currentMonth,
+      label: `${monthNames[now.getMonth()]} ${now.getFullYear()}`,
+      data: {
+        eleves: kpiGlobaux.eleves,
+        classes: kpiGlobaux.classes,
+        enseignants: kpiGlobaux.enseignants,
+        taux_reussite: kpiGlobaux.taux_reussite,
+        revenus: kpiGlobaux.revenus
+      }
+    };
+  }, [kpiGlobaux]);
 
-  const previousPeriodData = useMemo(() => ({
-    period: '2024-10',
-    label: 'Octobre 2024',
-    data: {
-      eleves: 620,
-      classes: 30,
-      enseignants: 49,
-      taux_reussite: 85,
-      revenus: 5750000
+  const previousPeriodData = useMemo(() => {
+    // Récupérer les données du mois précédent depuis trendData
+    const now = new Date();
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthPeriod = lastMonth.toISOString().slice(0, 7);
+    const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 
+                        'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    
+    // Trouver les données du mois précédent dans trendData
+    const lastMonthData = trendData.find(t => t.period === lastMonthPeriod);
+    
+    if (lastMonthData) {
+      return {
+        period: lastMonthPeriod,
+        label: `${monthNames[lastMonth.getMonth()]} ${lastMonth.getFullYear()}`,
+        data: {
+          eleves: lastMonthData.eleves,
+          classes: Math.round(lastMonthData.eleves / 25), // Estimation: 25 élèves par classe
+          enseignants: lastMonthData.enseignants,
+          taux_reussite: lastMonthData.taux_reussite,
+          revenus: lastMonthData.revenus
+        }
+      };
     }
-  }), []);
+    
+    // Fallback si pas de données
+    return {
+      period: lastMonthPeriod,
+      label: `${monthNames[lastMonth.getMonth()]} ${lastMonth.getFullYear()}`,
+      data: {
+        eleves: 0,
+        classes: 0,
+        enseignants: 0,
+        taux_reussite: 0,
+        revenus: 0
+      }
+    };
+  }, [trendData]);
 
   // Fonctions de gestion des événements
   const handleNiveauClick = (niveau: NiveauEducatif) => {
@@ -594,6 +636,21 @@ export const DirectorDashboardOptimized = memo(() => {
 
   const handleDismissAlert = (alertId: string) => {
     setDismissedAlerts(prev => [...prev, alertId]);
+  };
+
+  // 🔧 Fonction de diagnostic et nettoyage du cache
+  const handleClearCacheAndReload = () => {
+    console.log('🧹 Nettoyage du cache d\'authentification...');
+    
+    // Vider le cache Zustand
+    localStorage.removeItem('e-pilot-auth');
+    localStorage.removeItem('auth-token');
+    localStorage.removeItem('auth-refresh-token');
+    
+    console.log('✅ Cache vidé - Rechargement de la page...');
+    
+    // Recharger la page
+    window.location.reload();
   };
 
   const handlePeriodChange = (period: 'month' | 'quarter' | 'year') => {
@@ -653,6 +710,28 @@ export const DirectorDashboardOptimized = memo(() => {
       <div className="relative z-10 space-y-8 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       {/* Header avec infos essentielles */}
       <DashboardHeader />
+
+      {/* Alerte si données mockées */}
+      {dashboardError && (
+        <Alert variant="default" className="mb-6 border-orange-200 bg-orange-50">
+          <Info className="h-4 w-4 text-orange-600" />
+          <AlertTitle className="text-orange-800 font-semibold">Données de Démonstration</AlertTitle>
+          <AlertDescription className="text-orange-700">
+            Les données affichées sont des exemples. Vérifiez la connexion à la base de données pour voir les données réelles de votre école.
+            <div className="mt-2 flex gap-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={refreshData}
+                className="border-orange-300 text-orange-700 hover:bg-orange-100"
+              >
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Réessayer
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* KPI Globaux de l'École avec design premium */}
       <Card className="p-8 relative overflow-hidden group hover:shadow-xl transition-all duration-500 border-0 bg-gradient-to-br from-white via-gray-50/50 to-blue-50/30">
@@ -771,11 +850,40 @@ export const DirectorDashboardOptimized = memo(() => {
         </div>
 
         <div className="space-y-6">
-          {niveauxEducatifs.map((niveau, index) => (
-            <div key={niveau.id} className="animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
-              <NiveauSection niveau={niveau} onNiveauClick={handleNiveauClick} />
-            </div>
-          ))}
+          {niveauxEducatifs.length === 0 ? (
+            <Card className="p-8 text-center">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="h-8 w-8 text-orange-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun niveau scolaire actif</h3>
+                  <p className="text-gray-600 mb-4">
+                    Votre école n'a aucun niveau scolaire activé. Si vous venez de les activer, le cache doit être vidé.
+                  </p>
+                  <div className="flex gap-3 justify-center">
+                    <Button onClick={refreshData} variant="outline" className="gap-2">
+                      <RefreshCw className="h-4 w-4" />
+                      Rafraîchir
+                    </Button>
+                    <Button onClick={handleClearCacheAndReload} className="gap-2 bg-orange-600 hover:bg-orange-700">
+                      <RefreshCw className="h-4 w-4" />
+                      Vider le Cache et Recharger
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-3">
+                    💡 Le bouton orange va vider le cache et vous reconnecter automatiquement
+                  </p>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            niveauxEducatifs.map((niveau, index) => (
+              <div key={niveau.id} className="animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
+                <NiveauSection niveau={niveau} onNiveauClick={handleNiveauClick} />
+              </div>
+            ))
+          )}
         </div>
       </div>
 
