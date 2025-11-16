@@ -51,7 +51,7 @@ export const useActivityLogs = (filters?: ActivityLogFilters) => {
             role
           )
         `)
-        .order('timestamp', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(100); // Limiter à 100 logs récents
 
       // Filtres
@@ -72,11 +72,11 @@ export const useActivityLogs = (filters?: ActivityLogFilters) => {
       }
 
       if (filters?.dateFrom) {
-        query = query.gte('timestamp', filters.dateFrom);
+        query = query.gte('created_at', filters.dateFrom);
       }
 
       if (filters?.dateTo) {
-        query = query.lte('timestamp', filters.dateTo);
+        query = query.lte('created_at', filters.dateTo);
       }
 
       const { data, error } = await query;
@@ -95,7 +95,7 @@ export const useActivityLogs = (filters?: ActivityLogFilters) => {
         details: log.details,
         ipAddress: log.ip_address,
         userAgent: log.user_agent,
-        timestamp: log.timestamp,
+        timestamp: log.created_at, // Utiliser created_at
       })) as ActivityLog[];
     },
     staleTime: 1 * 60 * 1000, // 1 minute (logs changent souvent)
@@ -136,7 +136,7 @@ export const useActivityLog = (id: string) => {
         details: data.details,
         ipAddress: data.ip_address,
         userAgent: data.user_agent,
-        timestamp: data.timestamp,
+        timestamp: data.created_at, // Utiliser created_at
       } as ActivityLog;
     },
     enabled: !!id,
@@ -239,7 +239,7 @@ export const useActivityLogStats = () => {
       const { count: todayCount, error: todayError } = await supabase
         .from('activity_logs')
         .select('*', { count: 'exact', head: true })
-        .gte('timestamp', today.toISOString());
+        .gte('created_at', today.toISOString());
 
       if (todayError) throw todayError;
 
