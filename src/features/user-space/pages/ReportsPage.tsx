@@ -16,13 +16,17 @@ import {
   BookOpen,
   Filter,
   Eye,
-  BarChart3
+  BarChart3,
+  FileSpreadsheet,
+  FileDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useDirectorDashboard } from '../hooks/useDirectorDashboard';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import { ReportPreviewModal } from '../components/ReportPreviewModal';
+import { generatePDF, generateExcel, generateCSV } from '../utils/reportExports';
 
 // Types de rapports disponibles
 type ReportType = 
@@ -32,7 +36,7 @@ type ReportType =
   | 'personnel' 
   | 'students';
 
-type ReportPeriod = 'week' | 'month' | 'quarter' | 'year' | 'custom';
+type ReportPeriod = 'week' | 'month' | 'quarter' | 'year';
 
 interface Report {
   id: string;
@@ -62,6 +66,9 @@ export const ReportsPage = () => {
     const cached = localStorage.getItem('reports-type');
     return (cached as ReportType | 'all') || 'all';
   });
+
+  // État pour la modal de prévisualisation
+  const [previewReport, setPreviewReport] = useState<ReportType | null>(null);
 
   // Sauvegarder les filtres dans le cache
   useEffect(() => {
@@ -147,51 +154,40 @@ export const ReportsPage = () => {
     },
   }), [selectedPeriod, user, globalKPIs, schoolLevels]);
 
-  // Fonction pour générer un rapport
-  const handleGenerateReport = (reportType: ReportType) => {
-    console.log('📊 Génération du rapport:', reportType, 'Période:', selectedPeriod);
+  // Fonction pour générer un rapport PDF
+  const handleGenerateReport = (reportType: ReportType, format: 'pdf' | 'excel' | 'csv' = 'pdf') => {
+    console.log(`📊 Génération du rapport ${reportType} en ${format.toUpperCase()}`);
     
     const reportData = {
       type: reportType,
-      period: selectedPeriod,
-      data: globalReportData,
-      niveaux: schoolLevels,
-      generatedAt: new Date().toISOString(),
+      period: selectedPeriod as ReportPeriod,
+      globalKPIs,
+      schoolLevels,
     };
     
-    console.log('✅ Données du rapport:', reportData);
-    
-    // Message amélioré avec détails
-    const reportNames = {
-      global: 'Global',
-      academic: 'Académique',
-      financial: 'Financier',
-      personnel: 'Personnel',
-      students: 'Élèves',
-    };
-    
-    const periodNames = {
-      week: 'Hebdomadaire',
-      month: 'Mensuel',
-      quarter: 'Trimestriel',
-      year: 'Annuel',
-      custom: 'Personnalisé',
-    };
-    
-    alert(
-      `✅ Rapport ${reportNames[reportType]} généré avec succès!\n\n` +
-      `📅 Période: ${periodNames[selectedPeriod]}\n` +
-      `📊 Données incluses: ${Object.keys(reportData.data).length} sections\n` +
-      `🎓 Niveaux: ${schoolLevels.length}\n\n` +
-      `💡 Le téléchargement PDF sera implémenté prochainement.\n` +
-      `Les données sont disponibles dans la console (F12).`
-    );
+    try {
+      let fileName = '';
+      
+      if (format === 'pdf') {
+        fileName = generatePDF(reportData);
+      } else if (format === 'excel') {
+        fileName = generateExcel(reportData);
+      } else if (format === 'csv') {
+        fileName = generateCSV(reportData);
+      }
+      
+      console.log(`✅ Rapport généré: ${fileName}`);
+      alert(`✅ Rapport téléchargé avec succès!\n\nFichier: ${fileName}`);
+    } catch (error) {
+      console.error('❌ Erreur lors de la génération:', error);
+      alert('❌ Erreur lors de la génération du rapport. Vérifiez la console.');
+    }
   };
 
   // Fonction pour prévisualiser un rapport
   const handlePreviewReport = (reportType: ReportType) => {
     console.log('👁️ Prévisualisation du rapport:', reportType);
-    // TODO: Ouvrir modal de prévisualisation
+    setPreviewReport(reportType);
   };
 
   if (isLoading) {
@@ -508,6 +504,19 @@ export const ReportsPage = () => {
           </div>
         )}
       </div>
+
+      {/* Modal de prévisualisation */}
+      {previewReport && (
+        <ReportPreviewModal
+          isOpen={!!previewReport}
+          onClose={() => setPreviewReport(null)}
+          reportType={previewReport}
+          period={selectedPeriod}
+          globalKPIs={globalKPIs}
+          schoolLevels={schoolLevels}
+          onGenerate={() => handleGenerateReport(previewReport)}
+        />
+      )}
     </div>
   );
 };
