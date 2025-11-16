@@ -86,14 +86,34 @@ export const ReportPreviewModal = ({
             <div className="flex items-start gap-4 mb-4">
               {/* Logo */}
               {schoolInfo?.school.logo ? (
-                <img 
-                  src={schoolInfo.school.logo} 
-                  alt="Logo" 
-                  className="h-16 w-16 object-contain rounded-lg bg-white p-2"
-                />
+                <div className="h-16 w-16 rounded-lg bg-white p-2 border border-gray-200 flex items-center justify-center overflow-hidden">
+                  <img 
+                    src={schoolInfo.school.logo} 
+                    alt={`Logo ${schoolInfo.school.name}`}
+                    className="max-h-full max-w-full object-contain"
+                    onError={(e) => {
+                      console.error('❌ Logo loading error:', schoolInfo.school.logo);
+                      // Fallback si l'image ne charge pas
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).parentElement!.innerHTML = `
+                        <div class="h-16 w-16 bg-gradient-to-br from-[#2A9D8F] to-[#238b7e] rounded-lg flex items-center justify-center">
+                          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                          </svg>
+                        </div>
+                      `;
+                    }}
+                  />
+                </div>
               ) : (
-                <div className="h-16 w-16 bg-gradient-to-br from-[#2A9D8F] to-[#238b7e] rounded-lg flex items-center justify-center">
-                  <Building2 className="w-8 h-8 text-white" />
+                <div className="h-16 w-16 bg-gradient-to-br from-[#2A9D8F] to-[#238b7e] rounded-lg flex items-center justify-center shadow-md">
+                  {schoolInfo?.school.name ? (
+                    <div className="text-white font-bold text-xl">
+                      {schoolInfo.school.name.split(' ').slice(0, 2).map(word => word[0]).join('').toUpperCase()}
+                    </div>
+                  ) : (
+                    <Building2 className="w-8 h-8 text-white" />
+                  )}
                 </div>
               )}
 

@@ -47,9 +47,13 @@ export const useSchoolInfo = () => {
 
   return useQuery({
     queryKey: ['school-info', user?.id],
-    enabled: !!user?.id,
+    enabled: true, // TOUJOURS actif
     staleTime: 10 * 60 * 1000, // Cache 10 minutes
     queryFn: async (): Promise<SchoolInfo> => {
+      if (!user) {
+        console.error('❌ No user data');
+        throw new Error('Utilisateur non connecté');
+      }
       console.log('🔍 Fetching school info...');
       
       // Si pas de schoolId, récupérer la première école du premier groupe
