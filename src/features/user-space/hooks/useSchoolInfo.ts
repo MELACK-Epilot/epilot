@@ -39,12 +39,21 @@ export interface SchoolInfo {
 export const useSchoolInfo = () => {
   const { data: user } = useCurrentUser();
 
+  console.log('🏫 useSchoolInfo - User data:', {
+    userId: user?.id,
+    schoolId: user?.schoolId,
+    schoolGroupId: user?.schoolGroupId,
+  });
+
   return useQuery({
     queryKey: ['school-info', user?.schoolId, user?.schoolGroupId],
     enabled: !!user?.schoolId && !!user?.schoolGroupId,
     staleTime: 10 * 60 * 1000, // Cache 10 minutes
     queryFn: async (): Promise<SchoolInfo> => {
+      console.log('🔍 Fetching school info...');
+      
       if (!user?.schoolId || !user?.schoolGroupId) {
+        console.error('❌ Missing schoolId or schoolGroupId');
         throw new Error('Informations utilisateur incomplètes');
       }
 
@@ -55,7 +64,12 @@ export const useSchoolInfo = () => {
         .eq('id', user.schoolId)
         .single();
 
-      if (schoolError || !school) throw schoolError || new Error('École non trouvée');
+      if (schoolError || !school) {
+        console.error('❌ School error:', schoolError);
+        throw schoolError || new Error('École non trouvée');
+      }
+      
+      console.log('✅ School data:', school);
 
       // 2. Récupérer les infos du groupe scolaire
       const { data: schoolGroup, error: groupError } = await supabase
@@ -64,7 +78,12 @@ export const useSchoolInfo = () => {
         .eq('id', user.schoolGroupId)
         .single();
 
-      if (groupError || !schoolGroup) throw groupError || new Error('Groupe non trouvé');
+      if (groupError || !schoolGroup) {
+        console.error('❌ School group error:', groupError);
+        throw groupError || new Error('Groupe non trouvé');
+      }
+      
+      console.log('✅ School group data:', schoolGroup);
 
       // Cast explicite pour TypeScript
       const schoolData = school as any;
@@ -89,7 +108,7 @@ export const useSchoolInfo = () => {
         phone: undefined,
       };
 
-      return {
+      const result = {
         school: {
           id: schoolData.id,
           name: schoolData.name,
@@ -114,6 +133,9 @@ export const useSchoolInfo = () => {
           phone: directorInfo.phone,
         },
       };
+      
+      console.log('✅ Final school info:', result);
+      return result;
     },
   });
 };
