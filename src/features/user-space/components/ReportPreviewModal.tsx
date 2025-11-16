@@ -15,7 +15,34 @@ interface ReportPreviewModalProps {
   period: string;
   globalKPIs: DashboardKPIs;
   schoolLevels: SchoolLevel[];
+  schoolInfo?: SchoolInfo;
   onGenerate: () => void;
+}
+
+interface SchoolInfo {
+  school: {
+    id: string;
+    name: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    logo?: string;
+  };
+  schoolGroup: {
+    id: string;
+    name: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    logo?: string;
+  };
+  director: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+  };
 }
 
 export const ReportPreviewModal = ({
@@ -25,6 +52,7 @@ export const ReportPreviewModal = ({
   period,
   globalKPIs,
   schoolLevels,
+  schoolInfo,
   onGenerate,
 }: ReportPreviewModalProps) => {
   const reportTitles = {
@@ -55,23 +83,66 @@ export const ReportPreviewModal = ({
         <div className="space-y-6 py-4">
           {/* En-tête du rapport */}
           <div className="bg-gradient-to-r from-[#2A9D8F]/10 to-blue-50 rounded-xl p-6 border border-[#2A9D8F]/20">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">{reportTitles[reportType]}</h3>
-                <p className="text-gray-600">Période: {periodNames[period as keyof typeof periodNames]}</p>
+            <div className="flex items-start gap-4 mb-4">
+              {/* Logo */}
+              {schoolInfo?.school.logo ? (
+                <img 
+                  src={schoolInfo.school.logo} 
+                  alt="Logo" 
+                  className="h-16 w-16 object-contain rounded-lg bg-white p-2"
+                />
+              ) : (
+                <div className="h-16 w-16 bg-gradient-to-br from-[#2A9D8F] to-[#238b7e] rounded-lg flex items-center justify-center">
+                  <Building2 className="w-8 h-8 text-white" />
+                </div>
+              )}
+
+              {/* Informations école */}
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-900 mb-1">
+                  {schoolInfo?.school.name || 'École'}
+                </h3>
+                {schoolInfo?.school.address && (
+                  <p className="text-sm text-gray-600">{schoolInfo.school.address}</p>
+                )}
+                <div className="flex items-center gap-3 text-sm text-gray-600 mt-1">
+                  {schoolInfo?.school.phone && <span>{schoolInfo.school.phone}</span>}
+                  {schoolInfo?.school.email && (
+                    <>
+                      <span>•</span>
+                      <span>{schoolInfo.school.email}</span>
+                    </>
+                  )}
+                </div>
+                {schoolInfo?.schoolGroup.name && (
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <p className="text-xs text-gray-500">Groupe Scolaire</p>
+                    <p className="text-sm font-semibold text-gray-700">{schoolInfo.schoolGroup.name}</p>
+                  </div>
+                )}
               </div>
+
+              {/* Date */}
               <div className="text-right">
                 <p className="text-sm text-gray-600">Généré le</p>
                 <p className="font-semibold">{new Date().toLocaleDateString('fr-FR')}</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Building2 className="w-4 h-4" />
-              <span>École</span>
-              <span className="mx-2">•</span>
-              <Calendar className="w-4 h-4" />
-              <span>{new Date().toLocaleDateString('fr-FR')}</span>
+            {/* Rapport */}
+            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+              <div>
+                <h4 className="text-lg font-bold text-gray-900">{reportTitles[reportType]}</h4>
+                <p className="text-sm text-gray-600">Période: {periodNames[period as keyof typeof periodNames]}</p>
+              </div>
+              {schoolInfo?.director && (
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">Responsable</p>
+                  <p className="font-semibold text-gray-900">
+                    {schoolInfo.director.firstName} {schoolInfo.director.lastName}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

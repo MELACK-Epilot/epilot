@@ -169,6 +169,7 @@ export const ReportsPage = () => {
       period: selectedPeriod as ReportPeriod,
       globalKPIs,
       schoolLevels,
+      schoolInfo,
     };
     
     try {
@@ -520,6 +521,7 @@ export const ReportsPage = () => {
           period={selectedPeriod}
           globalKPIs={globalKPIs}
           schoolLevels={schoolLevels}
+          schoolInfo={schoolInfo}
           onGenerate={() => {
             setPreviewReport(null);
             setGenerateReport(previewReport);

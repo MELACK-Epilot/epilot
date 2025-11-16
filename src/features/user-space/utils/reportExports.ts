@@ -11,11 +11,38 @@ import type { DashboardKPIs, SchoolLevel } from '../hooks/useDirectorDashboard';
 type ReportType = 'global' | 'academic' | 'financial' | 'personnel' | 'students';
 type ReportPeriod = 'week' | 'month' | 'quarter' | 'year';
 
+interface SchoolInfo {
+  school: {
+    id: string;
+    name: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    logo?: string;
+  };
+  schoolGroup: {
+    id: string;
+    name: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    logo?: string;
+  };
+  director: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+  };
+}
+
 interface ReportData {
   type: ReportType;
   period: ReportPeriod;
   globalKPIs: DashboardKPIs;
   schoolLevels: SchoolLevel[];
+  schoolInfo?: SchoolInfo;
 }
 
 /**
@@ -39,22 +66,55 @@ export const generatePDF = (data: ReportData) => {
     year: 'Annuel',
   };
 
-  // En-tête
-  doc.setFontSize(20);
+  // En-tête avec informations école
+  doc.setFontSize(18);
   doc.setTextColor(42, 157, 143); // Couleur E-Pilot
-  doc.text(reportTitles[data.type], 20, 20);
+  doc.text(data.schoolInfo?.school.name || 'École', 20, 20);
   
-  doc.setFontSize(12);
+  doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Période: ${periodNames[data.period]}`, 20, 30);
-  doc.text(`Généré le: ${new Date().toLocaleDateString('fr-FR')}`, 20, 37);
+  if (data.schoolInfo?.school.address) {
+    doc.text(data.schoolInfo.school.address, 20, 27);
+  }
+  if (data.schoolInfo?.school.phone || data.schoolInfo?.school.email) {
+    doc.text(
+      `${data.schoolInfo?.school.phone || ''} • ${data.schoolInfo?.school.email || ''}`,
+      20,
+      32
+    );
+  }
+  
+  // Groupe scolaire
+  doc.setFontSize(9);
+  if (data.schoolInfo?.schoolGroup.name) {
+    doc.text(`Groupe: ${data.schoolInfo.schoolGroup.name}`, 20, 37);
+  }
   
   // Ligne de séparation
   doc.setDrawColor(42, 157, 143);
   doc.setLineWidth(0.5);
   doc.line(20, 42, 190, 42);
+  
+  // Titre du rapport
+  doc.setFontSize(16);
+  doc.setTextColor(0, 0, 0);
+  doc.text(reportTitles[data.type], 20, 52);
+  
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Période: ${periodNames[data.period]}`, 20, 59);
+  doc.text(`Généré le: ${new Date().toLocaleDateString('fr-FR')}`, 20, 64);
+  
+  // Responsable
+  if (data.schoolInfo?.director) {
+    doc.text(
+      `Responsable: ${data.schoolInfo.director.firstName} ${data.schoolInfo.director.lastName}`,
+      20,
+      69
+    );
+  }
 
-  let yPos = 50;
+  let yPos = 77;
 
   // Contenu selon le type
   if (data.type === 'global') {
@@ -221,17 +281,30 @@ export const generatePDF = (data: ReportData) => {
     });
   }
 
-  // Pied de page
+  // Pied de page avec signature
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
+    
+    // Numéro de page
     doc.setFontSize(10);
     doc.setTextColor(150, 150, 150);
     doc.text(
       `Page ${i} sur ${pageCount}`,
       doc.internal.pageSize.getWidth() / 2,
-      doc.internal.pageSize.getHeight() - 10,
+      doc.internal.pageSize.getHeight() - 15,
       { align: 'center' }
+    );
+    
+    // Signature
+    doc.setFontSize(8);
+    const signature = data.schoolInfo?.school.name && data.schoolInfo?.schoolGroup.name
+      ? `${data.schoolInfo.school.name} - ${data.schoolInfo.schoolGroup.name}`
+      : data.schoolInfo?.school.name || 'E-Pilot';
+    doc.text(
+      signature,
+      20,
+      doc.internal.pageSize.getHeight() - 10
     );
   }
 
