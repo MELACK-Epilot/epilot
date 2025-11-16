@@ -58,7 +58,7 @@ import { ClassesPage } from './features/user-space/pages/ClassesPage';
 import { StaffPage } from './features/user-space/pages/StaffPage';
 import { StudentsPage } from './features/user-space/pages/StudentsPage';
 import { SchoolGroupPage } from './features/user-space/pages/SchoolGroupPage';
-import { DirectorDashboardOptimized } from './features/user-space/pages/DirectorDashboardOptimized';
+import { DirectorDashboard } from './features/user-space/pages/DirectorDashboard';
 import { PersonnelManagement } from './features/user-space/pages/PersonnelManagement';
 import { StudentsManagement } from './features/user-space/pages/StudentsManagement';
 import { ProtectedModuleRoute } from './components/ProtectedModuleRoute';
@@ -257,7 +257,7 @@ function App() {
             {/* Dashboard Directeur/Proviseur - Vue d'ensemble école */}
             <Route path="dashboard-director" element={
               <ProtectedRoute roles={['proviseur', 'directeur', 'directeur_etudes']}>
-                <DirectorDashboardOptimized />
+                <DirectorDashboard />
               </ProtectedRoute>
             } />
             

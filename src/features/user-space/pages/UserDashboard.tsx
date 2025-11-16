@@ -38,7 +38,7 @@ import { usePermissions } from '@/providers/PermissionsProvider';
 import { getKPIsForRole } from '../utils/rolePermissions';
 import { EmptyModulesState } from '../components/EmptyModulesState';
 import { NiveauxDetailsModal } from '../components/NiveauxDetailsModal';
-import { DirectorDashboardOptimized } from './DirectorDashboardOptimized';
+import { DirectorDashboard } from './DirectorDashboard';
 
 /**
  * Composant Loading mémorisé
@@ -652,10 +652,10 @@ export const UserDashboard = () => {
     email: user.email,
   });
 
-  // Dashboard PROVISEUR/DIRECTEUR - Version Optimisée
+  // Dashboard PROVISEUR/DIRECTEUR - Version Refactorisée
   if (['proviseur', 'directeur', 'directeur_etudes'].includes(user.role)) {
-    console.log('✅ Affichage DirectorDashboardOptimized pour rôle:', user.role);
-    return <DirectorDashboardOptimized />;
+    console.log('✅ Affichage DirectorDashboard pour rôle:', user.role);
+    return <DirectorDashboard />;
   }
 
   // Dashboard ENSEIGNANT
