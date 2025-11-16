@@ -1,6 +1,7 @@
 /**
  * Hook pour le dashboard du directeur/proviseur - Données réelles
  * Connecté aux vraies tables Supabase
+ * Optimisé avec cache localStorage pour chargement ultra-rapide
  */
 
 import { useState, useCallback, useMemo, useEffect, startTransition } from 'react';
@@ -8,6 +9,10 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/features/auth/store/auth.store';
 import { loadSchoolLevels as loadLevelsModule } from './dashboard/loadSchoolLevels';
 import { loadTrendData as loadTrendDataModule } from './dashboard/loadTrendData';
+
+// Configuration du cache
+const CACHE_KEY = 'e-pilot-dashboard-cache';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Types pour les données du dashboard
 export interface SchoolLevel {
@@ -156,15 +161,46 @@ export function useDirectorDashboard() {
     }
   }, [user?.schoolId]);
 
-  // Fonction principale de chargement
+  // Fonction principale de chargement avec cache
   const loadDashboardData = useCallback(async () => {
     if (!user?.schoolId) return;
 
-    startTransition(() => {
-      setState(prev => ({ ...prev, isLoading: true, error: null }));
-    });
-
     try {
+      // ⚡ Vérifier le cache d'abord
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        try {
+          const { data, timestamp } = JSON.parse(cached);
+          
+          // Si cache valide (< 5 min)
+          if (Date.now() - timestamp < CACHE_DURATION) {
+            console.log('⚡ Données chargées depuis le cache (instantané)');
+            startTransition(() => {
+              setState({
+                schoolLevels: data.schoolLevels,
+                globalKPIs: data.globalKPIs,
+                trendData: data.trendData,
+                isLoading: false,
+                error: null,
+                lastUpdated: new Date(timestamp)
+              });
+            });
+            
+            // Recharger en arrière-plan pour mise à jour
+            loadFreshDataInBackground();
+            return;
+          }
+        } catch (e) {
+          console.warn('Cache invalide, rechargement...');
+        }
+      }
+
+      // Pas de cache valide, charger normalement
+      console.log('🔄 Chargement des données depuis Supabase...');
+      startTransition(() => {
+        setState(prev => ({ ...prev, isLoading: true, error: null }));
+      });
+
       // Charger toutes les données en parallèle
       const [schoolLevels, trendData] = await Promise.all([
         loadSchoolLevels(),
@@ -174,21 +210,38 @@ export function useDirectorDashboard() {
       // Calculer les KPIs globaux à partir des niveaux
       const globalKPIs = await loadGlobalKPIs(schoolLevels);
 
+      const newData = {
+        schoolLevels,
+        globalKPIs: globalKPIs || {
+          totalStudents: 0,
+          totalClasses: 0,
+          totalTeachers: 0,
+          averageSuccessRate: 0,
+          totalRevenue: 0,
+          monthlyGrowth: 0
+        },
+        trendData
+      };
+
       startTransition(() => {
-        setState(prev => ({
-          ...prev,
-          schoolLevels,
-          globalKPIs: globalKPIs || prev.globalKPIs,
-          trendData,
+        setState({
+          ...newData,
           isLoading: false,
+          error: null,
           lastUpdated: new Date(),
-        }));
+        });
       });
+
+      // ⚡ Sauvegarder en cache
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        data: newData,
+        timestamp: Date.now()
+      }));
+      console.log('✅ Données chargées et mises en cache');
 
     } catch (error) {
       console.error('❌ Erreur critique lors du chargement du dashboard:', error);
       
-      // ✅ Ne plus afficher de fausses données, mais un message d'erreur clair
       startTransition(() => {
         setState(prev => ({
           ...prev,
@@ -201,8 +254,57 @@ export function useDirectorDashboard() {
     }
   }, [user?.schoolId, loadSchoolLevels, loadGlobalKPIs, loadTrendData]);
 
-  // Rafraîchir les données
+  // Fonction pour recharger en arrière-plan (sans loading)
+  const loadFreshDataInBackground = useCallback(async () => {
+    if (!user?.schoolId) return;
+
+    try {
+      console.log('🔄 Mise à jour en arrière-plan...');
+      
+      const [schoolLevels, trendData] = await Promise.all([
+        loadSchoolLevels(),
+        loadTrendData(),
+      ]);
+
+      const globalKPIs = await loadGlobalKPIs(schoolLevels);
+
+      const newData = {
+        schoolLevels,
+        globalKPIs: globalKPIs || {
+          totalStudents: 0,
+          totalClasses: 0,
+          totalTeachers: 0,
+          averageSuccessRate: 0,
+          totalRevenue: 0,
+          monthlyGrowth: 0
+        },
+        trendData
+      };
+
+      startTransition(() => {
+        setState({
+          ...newData,
+          isLoading: false,
+          error: null,
+          lastUpdated: new Date(),
+        });
+      });
+
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        data: newData,
+        timestamp: Date.now()
+      }));
+      console.log('✅ Données mises à jour en arrière-plan');
+
+    } catch (error) {
+      console.error('⚠️ Erreur mise à jour arrière-plan:', error);
+    }
+  }, [user?.schoolId, loadSchoolLevels, loadGlobalKPIs, loadTrendData]);
+
+  // Rafraîchir les données (vider le cache)
   const refreshData = useCallback(() => {
+    console.log('🔄 Rafraîchissement forcé (cache vidé)');
+    localStorage.removeItem(CACHE_KEY);
     loadDashboardData();
   }, [loadDashboardData]);
 
