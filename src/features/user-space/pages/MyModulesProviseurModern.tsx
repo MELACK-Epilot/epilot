@@ -128,20 +128,23 @@ export default function MyModulesProviseurModern() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/20 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <Package className="w-7 h-7 text-white" />
+        {/* Header Moderne */}
+        <div className="bg-white border border-gray-200 rounded-3xl p-8 mb-8 shadow-sm hover:shadow-lg transition-all duration-500 relative overflow-hidden group">
+          {/* Éléments décoratifs */}
+          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-blue-100/30 to-purple-100/20 rounded-full -mr-20 -mt-20 group-hover:scale-110 transition-transform duration-700"></div>
+          
+          <div className="relative z-10 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <Package className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 bg-clip-text text-transparent mb-1">
                   Mes Modules
                 </h1>
-                <p className="text-gray-600">
+                <p className="text-gray-600 text-lg font-medium">
                   Bienvenue {user?.firstName} {user?.lastName}
                 </p>
               </div>
@@ -151,9 +154,9 @@ export default function MyModulesProviseurModern() {
             {user?.role && ['proviseur', 'directeur', 'directeur_etudes'].includes(user.role.toString()) && (
               <Button
                 onClick={() => navigate('/user/dashboard-director')}
-                className="bg-gradient-to-r from-[#2A9D8F] to-[#238b7e] hover:from-[#238b7e] hover:to-[#1d7a6f] text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                className="bg-gradient-to-r from-[#2A9D8F] to-[#238b7e] hover:from-[#238b7e] hover:to-[#1d7a6f] text-white shadow-lg hover:shadow-xl transition-all duration-300 h-12 px-6"
               >
-                <BarChart3 className="w-4 h-4 mr-2" />
+                <BarChart3 className="w-5 h-5 mr-2" />
                 Vue d'Ensemble École
               </Button>
             )}
