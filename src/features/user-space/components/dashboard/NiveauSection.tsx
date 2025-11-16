@@ -169,7 +169,6 @@ export const NiveauSection = memo(({ niveau, onNiveauClick }: NiveauSectionProps
           title="ÉLÈVES"
           value={niveau.kpis.eleves}
           icon={Users}
-          trend={niveau.kpis.trend === 'up' ? { value: 5, isPositive: true } : undefined}
           gradient={design.eleves.gradient}
           iconBg={design.eleves.iconBg}
           iconColor={design.eleves.iconColor}
@@ -197,7 +196,6 @@ export const NiveauSection = memo(({ niveau, onNiveauClick }: NiveauSectionProps
           title="TAUX RÉUSSITE"
           value={`${niveau.kpis.taux_reussite}%`}
           icon={Target}
-          trend={niveau.kpis.taux_reussite >= 75 ? { value: 2, isPositive: true } : { value: -2, isPositive: false }}
           gradient={design.taux.gradient}
           iconBg={design.taux.iconBg}
           iconColor={design.taux.iconColor}
