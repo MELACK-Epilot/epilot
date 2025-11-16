@@ -141,6 +141,12 @@ export const ReportPreviewModal = ({
                   <p className="font-semibold text-gray-900">
                     {schoolInfo.director.firstName} {schoolInfo.director.lastName}
                   </p>
+                  {schoolInfo.director.email && (
+                    <p className="text-xs text-gray-600 mt-1">{schoolInfo.director.email}</p>
+                  )}
+                  {schoolInfo.director.phone && (
+                    <p className="text-xs text-gray-600">{schoolInfo.director.phone}</p>
+                  )}
                 </div>
               )}
             </div>
@@ -253,6 +259,24 @@ export const ReportPreviewModal = ({
             </div>
           )}
         </div>
+
+        {/* Signature professionnelle */}
+        {schoolInfo && (
+          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div className="flex items-center justify-between text-xs text-gray-600">
+              <div>
+                <p className="font-semibold text-gray-900">{schoolInfo.school.name}</p>
+                {schoolInfo.schoolGroup.name && (
+                  <p>Groupe: {schoolInfo.schoolGroup.name}</p>
+                )}
+              </div>
+              <div className="text-right">
+                <p>Document généré par E-Pilot</p>
+                <p>{new Date().toLocaleDateString('fr-FR')} à {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose}>

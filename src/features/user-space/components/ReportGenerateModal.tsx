@@ -169,11 +169,17 @@ export const ReportGenerateModal = ({
                 <p className="font-semibold text-gray-900">{schoolLevels.length} niveaux</p>
               </div>
 
-              <div>
+              <div className="col-span-2">
                 <p className="text-sm text-gray-600 mb-1">Responsable</p>
                 <p className="font-semibold text-gray-900">
                   {schoolInfo?.director.firstName} {schoolInfo?.director.lastName}
                 </p>
+                {schoolInfo?.director.email && (
+                  <p className="text-xs text-gray-600 mt-1">📧 {schoolInfo.director.email}</p>
+                )}
+                {schoolInfo?.director.phone && (
+                  <p className="text-xs text-gray-600">📞 {schoolInfo.director.phone}</p>
+                )}
               </div>
             </div>
 
@@ -242,6 +248,28 @@ export const ReportGenerateModal = ({
             </div>
           </div>
         </div>
+
+        {/* Signature professionnelle */}
+        {schoolInfo && (
+          <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-blue-50 border-t border-gray-200">
+            <div className="flex items-center justify-between text-xs">
+              <div>
+                <p className="font-bold text-gray-900">{schoolInfo.school.name}</p>
+                {schoolInfo.schoolGroup.name && (
+                  <p className="text-gray-600">Groupe: {schoolInfo.schoolGroup.name}</p>
+                )}
+                {schoolInfo.school.address && (
+                  <p className="text-gray-600 mt-1">{schoolInfo.school.address}</p>
+                )}
+              </div>
+              <div className="text-right">
+                <p className="font-semibold text-[#2A9D8F]">Document Officiel</p>
+                <p className="text-gray-600">Généré par E-Pilot</p>
+                <p className="text-gray-600">{new Date().toLocaleDateString('fr-FR')}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose}>
