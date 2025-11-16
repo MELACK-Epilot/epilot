@@ -4,7 +4,7 @@
  * Données 100% réelles depuis Supabase
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   FileText, 
   Download, 
@@ -52,8 +52,25 @@ export const ReportsPage = () => {
     isLoading 
   } = useDirectorDashboard();
 
-  const [selectedPeriod, setSelectedPeriod] = useState<ReportPeriod>('month');
-  const [selectedType, setSelectedType] = useState<ReportType | 'all'>('all');
+  // Charger les filtres depuis le cache
+  const [selectedPeriod, setSelectedPeriod] = useState<ReportPeriod>(() => {
+    const cached = localStorage.getItem('reports-period');
+    return (cached as ReportPeriod) || 'month';
+  });
+  
+  const [selectedType, setSelectedType] = useState<ReportType | 'all'>(() => {
+    const cached = localStorage.getItem('reports-type');
+    return (cached as ReportType | 'all') || 'all';
+  });
+
+  // Sauvegarder les filtres dans le cache
+  useEffect(() => {
+    localStorage.setItem('reports-period', selectedPeriod);
+  }, [selectedPeriod]);
+
+  useEffect(() => {
+    localStorage.setItem('reports-type', selectedType);
+  }, [selectedType]);
 
   // Définition des rapports disponibles
   const availableReports: Report[] = useMemo(() => [
@@ -134,18 +151,41 @@ export const ReportsPage = () => {
   const handleGenerateReport = (reportType: ReportType) => {
     console.log('📊 Génération du rapport:', reportType, 'Période:', selectedPeriod);
     
-    // TODO: Implémenter la génération PDF
     const reportData = {
       type: reportType,
       period: selectedPeriod,
       data: globalReportData,
       niveaux: schoolLevels,
+      generatedAt: new Date().toISOString(),
     };
     
-    console.log('Données du rapport:', reportData);
+    console.log('✅ Données du rapport:', reportData);
     
-    // Simuler le téléchargement
-    alert(`Rapport ${reportType} généré avec succès!\nPériode: ${selectedPeriod}\n\nLe téléchargement PDF sera implémenté prochainement.`);
+    // Message amélioré avec détails
+    const reportNames = {
+      global: 'Global',
+      academic: 'Académique',
+      financial: 'Financier',
+      personnel: 'Personnel',
+      students: 'Élèves',
+    };
+    
+    const periodNames = {
+      week: 'Hebdomadaire',
+      month: 'Mensuel',
+      quarter: 'Trimestriel',
+      year: 'Annuel',
+      custom: 'Personnalisé',
+    };
+    
+    alert(
+      `✅ Rapport ${reportNames[reportType]} généré avec succès!\n\n` +
+      `📅 Période: ${periodNames[selectedPeriod]}\n` +
+      `📊 Données incluses: ${Object.keys(reportData.data).length} sections\n` +
+      `🎓 Niveaux: ${schoolLevels.length}\n\n` +
+      `💡 Le téléchargement PDF sera implémenté prochainement.\n` +
+      `Les données sont disponibles dans la console (F12).`
+    );
   };
 
   // Fonction pour prévisualiser un rapport
@@ -352,6 +392,22 @@ export const ReportsPage = () => {
                       <span className="text-gray-600">Niveaux</span>
                       <span className="font-semibold">{schoolLevels.length}</span>
                     </div>
+                    
+                    {/* Détails par niveau */}
+                    {schoolLevels.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <p className="text-xs font-semibold text-gray-700 mb-2">Par niveau</p>
+                        {schoolLevels.slice(0, 3).map(level => (
+                          <div key={level.id} className="flex justify-between text-xs mb-1">
+                            <span className="text-gray-600">{level.name}</span>
+                            <span className="font-semibold text-green-600">{level.success_rate}%</span>
+                          </div>
+                        ))}
+                        {schoolLevels.length > 3 && (
+                          <p className="text-xs text-gray-500 mt-1">+{schoolLevels.length - 3} autres...</p>
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
                 
@@ -395,6 +451,22 @@ export const ReportsPage = () => {
                         {Math.round(globalKPIs.totalStudents / globalKPIs.totalClasses)}
                       </span>
                     </div>
+                    
+                    {/* Détails par niveau */}
+                    {schoolLevels.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <p className="text-xs font-semibold text-gray-700 mb-2">Par niveau</p>
+                        {schoolLevels.slice(0, 3).map(level => (
+                          <div key={level.id} className="flex justify-between text-xs mb-1">
+                            <span className="text-gray-600">{level.name}</span>
+                            <span className="font-semibold text-blue-600">{level.students_count} élèves</span>
+                          </div>
+                        ))}
+                        {schoolLevels.length > 3 && (
+                          <p className="text-xs text-gray-500 mt-1">+{schoolLevels.length - 3} autres...</p>
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
