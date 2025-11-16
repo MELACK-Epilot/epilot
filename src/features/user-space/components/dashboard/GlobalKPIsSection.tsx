@@ -14,6 +14,7 @@ interface GlobalKPIsSectionProps {
     enseignants: number;
     taux_reussite: number;
     revenus: number;
+    croissance: number;
   };
 }
 
@@ -39,7 +40,6 @@ export const GlobalKPIsSection = memo(({ kpiGlobaux }: GlobalKPIsSectionProps) =
           title="TOTAL ÉLÈVES"
           value={kpiGlobaux.eleves}
           icon={Users}
-          trend={{ value: 8, isPositive: true }}
           gradient="from-blue-600 via-blue-700 to-blue-800"
           iconBg="bg-blue-600/20"
           iconColor="text-blue-100"
@@ -67,7 +67,6 @@ export const GlobalKPIsSection = memo(({ kpiGlobaux }: GlobalKPIsSectionProps) =
           title="TAUX MOYEN"
           value={`${kpiGlobaux.taux_reussite}%`}
           icon={Target}
-          trend={{ value: 3, isPositive: true }}
           gradient="from-orange-600 via-orange-700 to-orange-800"
           iconBg="bg-orange-600/20"
           iconColor="text-orange-100"
@@ -77,7 +76,6 @@ export const GlobalKPIsSection = memo(({ kpiGlobaux }: GlobalKPIsSectionProps) =
           title="REVENUS TOTAUX"
           value={formatCurrency(kpiGlobaux.revenus)}
           icon={TrendingUp}
-          trend={{ value: 12, isPositive: true }}
           gradient="from-green-600 via-green-700 to-green-800"
           iconBg="bg-green-600/20"
           iconColor="text-green-100"
@@ -85,9 +83,9 @@ export const GlobalKPIsSection = memo(({ kpiGlobaux }: GlobalKPIsSectionProps) =
 
         <KPICard
           title="CROISSANCE"
-          value="+8%"
+          value={`${kpiGlobaux.croissance >= 0 ? '+' : ''}${kpiGlobaux.croissance}%`}
           icon={BarChart3}
-          trend={{ value: 8, isPositive: true }}
+          trend={kpiGlobaux.croissance !== 0 ? { value: Math.abs(kpiGlobaux.croissance), isPositive: kpiGlobaux.croissance > 0 } : undefined}
           gradient="from-indigo-600 via-indigo-700 to-indigo-800"
           iconBg="bg-indigo-600/20"
           iconColor="text-indigo-100"

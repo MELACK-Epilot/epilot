@@ -96,7 +96,8 @@ export const DirectorDashboard = memo(() => {
     classes: globalKPIs.totalClasses,
     enseignants: globalKPIs.totalTeachers,
     taux_reussite: globalKPIs.averageSuccessRate,
-    revenus: globalKPIs.totalRevenue
+    revenus: globalKPIs.totalRevenue,
+    croissance: globalKPIs.monthlyGrowth
   }), [globalKPIs]);
 
   // Transformation données: realTrendData → trendData
