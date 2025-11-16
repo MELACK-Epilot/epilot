@@ -4,7 +4,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/types/database.types';
+import type { Database } from '@/types/supabase.types';
 
 // Récupération des variables d'environnement
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -55,7 +55,7 @@ export const handleSupabaseError = (error: any) => {
  */
 export const checkSupabaseConnection = async () => {
   try {
-    const { error } = await supabase.from('profiles').select('count').limit(1);
+    const { error } = await supabase.from('users').select('count').limit(1);
     
     if (error) {
       console.error('❌ Erreur de connexion Supabase:', error);

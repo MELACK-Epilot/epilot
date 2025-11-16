@@ -57,9 +57,22 @@ export const useSchoolGroup = () => {
         .select(`
           id,
           name,
+          code,
+          region,
+          city,
+          address,
+          phone,
+          website,
+          founded_year,
           description,
+          logo,
+          school_count,
+          student_count,
+          staff_count,
+          plan,
           status,
-          created_at
+          created_at,
+          updated_at
         `)
         .eq('id', schoolGroupId)
         .single();
@@ -81,7 +94,7 @@ export const useSchoolGroup = () => {
         .eq('school_group_id', schoolGroupId)
         .eq('status', 'active');
 
-      // Récupérer l'abonnement actif
+      // Récupérer l'abonnement actif (optionnel)
       const { data: subscription } = await supabase
         .from('subscriptions')
         .select(`
@@ -91,7 +104,7 @@ export const useSchoolGroup = () => {
         `)
         .eq('school_group_id', schoolGroupId)
         .eq('status', 'active')
-        .single();
+        .maybeSingle(); // Utiliser maybeSingle au lieu de single pour éviter l'erreur si pas trouvé
 
       // Cast explicite pour éviter les erreurs TypeScript
       const groupData = data as any;
@@ -101,17 +114,17 @@ export const useSchoolGroup = () => {
         id: groupData.id,
         name: groupData.name,
         description: groupData.description,
-        address: undefined,
-        phone: undefined,
-        email: undefined,
-        website: undefined,
-        logo: undefined,
+        address: groupData.address,
+        phone: groupData.phone,
+        email: undefined, // email n'existe pas dans la table
+        website: groupData.website,
+        logo: groupData.logo,
         status: groupData.status,
         created_at: groupData.created_at,
-        total_schools: schoolCount || 0,
-        total_users: userCount || 0,
+        total_schools: groupData.school_count || schoolCount || 0,
+        total_users: (groupData.student_count || 0) + (groupData.staff_count || 0) || userCount || 0,
         active_subscriptions: subscriptionData ? 1 : 0,
-        plan_name: subscriptionData?.plans?.name || 'Aucun plan',
+        plan_name: groupData.plan || subscriptionData?.plans?.name || 'Aucun plan',
       } as SchoolGroup;
     },
     enabled: !!(user?.schoolGroupId || user?.schoolId),

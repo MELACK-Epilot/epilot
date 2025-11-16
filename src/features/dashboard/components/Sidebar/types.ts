@@ -31,6 +31,8 @@ export interface NavigationItem {
   readonly href: string;
   readonly badge?: number | null;
   readonly roles?: string[];
+  readonly subItems?: NavigationItem[];
+  readonly defaultOpen?: boolean;
 }
 
 /**

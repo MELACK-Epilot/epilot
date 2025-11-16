@@ -61,8 +61,20 @@ import { EstablishmentPage } from './features/user-space/pages/EstablishmentPage
 import { DirectorDashboard } from './features/user-space/pages/DirectorDashboard';
 import { PersonnelManagement } from './features/user-space/pages/PersonnelManagement';
 import { StudentsManagement } from './features/user-space/pages/StudentsManagement';
+
+// Pages Actions
+import { DocumentHubPageOptimized as DocumentHubPage } from './features/user-space/pages/DocumentHubPageOptimized';
+import { ResourceRequestsPageOptimized as ResourceRequestsPage } from './features/user-space/pages/ResourceRequestsPageOptimized';
+import { ShareFilesPage } from './features/user-space/pages/ShareFilesPage';
+import { SchoolNetworkPage } from './features/user-space/pages/SchoolNetworkPage';
+import { MeetingRequestsPage } from './features/user-space/pages/MeetingRequestsPage';
 import { ReportsPage } from './features/user-space/pages/ReportsPage';
 import { ActivityLogsPageReal } from './features/user-space/pages/ActivityLogsPageReal';
+
+// Pages modernes créées
+import { StaffManagementPage } from './features/user-space/pages/StaffManagementPage';
+import { SchoolReportsPage } from './features/user-space/pages/SchoolReportsPage';
+import { AdvancedStatsPage } from './features/user-space/pages/AdvancedStatsPage';
 import { ProtectedModuleRoute } from './components/ProtectedModuleRoute';
 import { UserPermissionsProvider } from './contexts/UserPermissionsProvider';
 
@@ -259,6 +271,13 @@ function App() {
             <Route path="modules" element={<MyModules />} />
             <Route path="categories" element={<MyCategories />} />
             
+            {/* Actions - Nouvelles pages */}
+            <Route path="documents" element={<DocumentHubPage />} />
+            <Route path="resource-requests" element={<ResourceRequestsPage />} />
+            <Route path="share-files" element={<ShareFilesPage />} />
+            <Route path="school-network" element={<SchoolNetworkPage />} />
+            <Route path="meeting-requests" element={<MeetingRequestsPage />} />
+            
             {/* Dashboard Directeur/Proviseur - Vue d'ensemble école */}
             <Route path="dashboard-director" element={
               <ProtectedRoute roles={['proviseur', 'directeur', 'directeur_etudes']}>
@@ -291,6 +310,34 @@ function App() {
             <Route path="activity-logs" element={
               <ProtectedRoute roles={['proviseur', 'directeur', 'directeur_etudes']}>
                 <ActivityLogsPageReal />
+              </ProtectedRoute>
+            } />
+            
+            {/* Pages modernes - Protégées par modules assignés */}
+            <Route path="staff-management" element={
+              <ProtectedRoute roles={['proviseur', 'directeur', 'directeur_etudes', 'admin_groupe']}>
+                <ProtectedModuleRoute moduleSlug="personnel">
+                  <StaffManagementPage />
+                </ProtectedModuleRoute>
+              </ProtectedRoute>
+            } />
+            
+            {/* Classes Management - Géré via le module "classes" */}
+            {/* Route retirée - Utiliser /user/modules/classes à la place */}
+            
+            <Route path="reports-management" element={
+              <ProtectedRoute roles={['proviseur', 'directeur', 'directeur_etudes', 'admin_groupe']}>
+                <ProtectedModuleRoute moduleSlug="rapports">
+                  <SchoolReportsPage />
+                </ProtectedModuleRoute>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="advanced-stats" element={
+              <ProtectedRoute roles={['proviseur', 'directeur', 'directeur_etudes', 'admin_groupe']}>
+                <ProtectedModuleRoute moduleSlug="statistiques">
+                  <AdvancedStatsPage />
+                </ProtectedModuleRoute>
               </ProtectedRoute>
             } />
             

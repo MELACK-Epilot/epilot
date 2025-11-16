@@ -20,8 +20,14 @@ import {
   Activity,
   Trash2,
   TrendingUp,
+  Zap,
+  ClipboardList,
+  Share2,
+  Calendar,
+  Network,
 } from 'lucide-react';
 import { SidebarNavItem } from './SidebarNavItem';
+import { SidebarNavItemWithSubmenu } from './SidebarNavItemWithSubmenu';
 import { cn } from '@/lib/utils';
 import type { SidebarNavProps, NavigationItem } from './types';
 
@@ -77,6 +83,45 @@ const NAVIGATION_ITEMS: readonly NavigationItem[] = [
     href: '/dashboard/modules',
     badge: null,
     roles: ['super_admin', 'admin_groupe'],
+  },
+  {
+    title: 'Actions',
+    icon: Zap,
+    href: '#',
+    badge: null,
+    roles: ['admin_groupe', 'proviseur', 'directeur', 'directeur_etudes'],
+    subItems: [
+      {
+        title: 'Hub Documentaire',
+        icon: FileText,
+        href: '/user/documents',
+        badge: null,
+      },
+      {
+        title: 'État des Besoins',
+        icon: ClipboardList,
+        href: '/user/resource-requests',
+        badge: null,
+      },
+      {
+        title: 'Partager des Fichiers',
+        icon: Share2,
+        href: '/user/share-files',
+        badge: null,
+      },
+      {
+        title: 'Réseau des Écoles',
+        icon: Network,
+        href: '/user/school-network',
+        badge: null,
+      },
+      {
+        title: 'Demande de Réunion',
+        icon: Calendar,
+        href: '/user/meeting-requests',
+        badge: null,
+      },
+    ],
   },
   {
     title: 'Finances Groupe',
@@ -161,16 +206,34 @@ export const SidebarNav = memo<SidebarNavProps>(({
       aria-label="Navigation principale"
     >
       <div className="space-y-1">
-        {navigationItems.map((item, index) => (
-          <SidebarNavItem
-            key={item.href}
-            item={item}
-            isOpen={isOpen}
-            isActive={isActive(item.href)}
-            index={index}
-            onClick={onLinkClick}
-          />
-        ))}
+        {navigationItems.map((item, index) => {
+          // Si l'item a des sous-items, utiliser le composant avec sous-menu
+          if (item.subItems && item.subItems.length > 0) {
+            return (
+              <SidebarNavItemWithSubmenu
+                key={item.href}
+                item={item}
+                isOpen={isOpen}
+                isActive={isActive(item.href)}
+                index={index}
+                currentPath={currentPath}
+                onClick={onLinkClick}
+              />
+            );
+          }
+
+          // Sinon, utiliser le composant standard
+          return (
+            <SidebarNavItem
+              key={item.href}
+              item={item}
+              isOpen={isOpen}
+              isActive={isActive(item.href)}
+              index={index}
+              onClick={onLinkClick}
+            />
+          );
+        })}
       </div>
     </nav>
   );

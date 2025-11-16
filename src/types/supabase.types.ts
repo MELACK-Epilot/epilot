@@ -21,7 +21,7 @@ export interface Database {
           first_name: string
           last_name: string
           phone: string | null
-          role: 'super_admin' | 'admin_groupe' | 'proviseur' | 'directeur' | 'directeur_etudes' | 'secretaire' | 'comptable' | 'enseignant' | 'cpe' | 'surveillant' | 'bibliothecaire' | 'gestionnaire_cantine' | 'conseiller_orientation' | 'infirmier' | 'eleve' | 'parent' | 'autre'
+          role: 'super_admin' | 'admin_groupe' | 'admin_ecole'
           school_group_id: string | null
           school_id: string | null
           status: 'active' | 'inactive' | 'suspended'
@@ -36,7 +36,7 @@ export interface Database {
           first_name: string
           last_name: string
           phone?: string | null
-          role: 'super_admin' | 'admin_groupe' | 'proviseur' | 'directeur' | 'directeur_etudes' | 'secretaire' | 'comptable' | 'enseignant' | 'cpe' | 'surveillant' | 'bibliothecaire' | 'gestionnaire_cantine' | 'conseiller_orientation' | 'infirmier' | 'eleve' | 'parent' | 'autre'
+          role: 'super_admin' | 'admin_groupe' | 'admin_ecole'
           school_group_id?: string | null
           school_id?: string | null
           status?: 'active' | 'inactive' | 'suspended'
@@ -60,7 +60,6 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
       }
       school_groups: {
         Row: {
@@ -75,6 +74,7 @@ export interface Database {
           founded_year: number | null
           description: string | null
           logo: string | null
+          admin_id: string | null
           school_count: number
           student_count: number
           staff_count: number
@@ -95,6 +95,7 @@ export interface Database {
           founded_year?: number | null
           description?: string | null
           logo?: string | null
+          admin_id?: string | null
           school_count?: number
           student_count?: number
           staff_count?: number
@@ -115,6 +116,7 @@ export interface Database {
           founded_year?: number | null
           description?: string | null
           logo?: string | null
+          admin_id?: string | null
           school_count?: number
           student_count?: number
           staff_count?: number
@@ -123,7 +125,6 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
       }
       schools: {
         Row: {
@@ -171,7 +172,6 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
       }
       plans: {
         Row: {
@@ -213,7 +213,6 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
       }
       subscriptions: {
         Row: {
@@ -249,7 +248,6 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
       }
       business_categories: {
         Row: {
@@ -285,7 +283,6 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
       }
       modules: {
         Row: {
@@ -324,7 +321,6 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
       }
       inscriptions: {
         Row: {
@@ -341,23 +337,6 @@ export interface Database {
           requested_class_id: string | null
           requested_level: string
           serie: string | null
-          type_inscription: 'nouvelle' | 'reinscription' | 'transfert' | null
-          filiere: string | null
-          option_specialite: string | null
-          ancienne_ecole: string | null
-          student_phone: string | null
-          student_email: string | null
-          student_nationality: string | null
-          student_postnom: string | null
-          montant_paye: number | null
-          mode_paiement: string | null
-          a_aide_sociale: boolean
-          est_pensionnaire: boolean
-          a_bourse: boolean
-          frais_inscription: number
-          frais_scolarite: number
-          frais_cantine: number | null
-          frais_transport: number | null
           parent1_first_name: string
           parent1_last_name: string
           parent1_phone: string
@@ -399,7 +378,6 @@ export interface Database {
           requested_class_id?: string | null
           requested_level: string
           serie?: string | null
-          type_inscription?: 'nouvelle' | 'reinscription' | 'transfert' | null
           parent1_first_name: string
           parent1_last_name: string
           parent1_phone: string
@@ -441,7 +419,6 @@ export interface Database {
           requested_class_id?: string | null
           requested_level?: string
           serie?: string | null
-          type_inscription?: 'nouvelle' | 'reinscription' | 'transfert' | null
           parent1_first_name?: string
           parent1_last_name?: string
           parent1_phone?: string
@@ -469,7 +446,6 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
       }
       activity_logs: {
         Row: {
@@ -505,7 +481,6 @@ export interface Database {
           user_agent?: string | null
           created_at?: string
         }
-        Relationships: []
       }
       notifications: {
         Row: {
@@ -535,7 +510,127 @@ export interface Database {
           read?: boolean
           created_at?: string
         }
-        Relationships: []
+      }
+      resource_requests: {
+        Row: {
+          id: string
+          school_id: string
+          school_group_id: string
+          requested_by: string
+          status: 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed'
+          priority: 'low' | 'normal' | 'high' | 'urgent'
+          title: string
+          description: string | null
+          notes: string | null
+          total_estimated_amount: number
+          created_at: string
+          updated_at: string
+          approved_at: string | null
+          approved_by: string | null
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          school_id: string
+          school_group_id: string
+          requested_by: string
+          status?: 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed'
+          priority?: 'low' | 'normal' | 'high' | 'urgent'
+          title: string
+          description?: string | null
+          notes?: string | null
+          total_estimated_amount?: number
+          created_at?: string
+          updated_at?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          school_id?: string
+          school_group_id?: string
+          requested_by?: string
+          status?: 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed'
+          priority?: 'low' | 'normal' | 'high' | 'urgent'
+          title?: string
+          description?: string | null
+          notes?: string | null
+          total_estimated_amount?: number
+          created_at?: string
+          updated_at?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
+        }
+      }
+      resource_request_items: {
+        Row: {
+          id: string
+          request_id: string
+          resource_name: string
+          resource_category: string
+          quantity: number
+          unit: string
+          unit_price: number
+          total_price: number
+          justification: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          resource_name: string
+          resource_category: string
+          quantity: number
+          unit: string
+          unit_price: number
+          justification?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          resource_name?: string
+          resource_category?: string
+          quantity?: number
+          unit?: string
+          unit_price?: number
+          justification?: string | null
+          created_at?: string
+        }
+      }
+      resource_request_attachments: {
+        Row: {
+          id: string
+          request_id: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string | null
+          uploaded_by: string
+          uploaded_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type?: string | null
+          uploaded_by: string
+          uploaded_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string | null
+          uploaded_by?: string
+          uploaded_at?: string
+        }
       }
     }
     Views: {

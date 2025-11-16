@@ -19,6 +19,9 @@ import {
   GraduationCap,
   DollarSign,
   Activity,
+  FileText,
+  Share2,
+  Network,
 } from 'lucide-react';
 
 // Types modernes avec const assertions
@@ -90,6 +93,10 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
         items: [
           { to: '/user/modules', icon: BookOpen, label: 'Mes Modules' },
         ]
+      },
+      {
+        label: 'Actions',
+        items: getActionsItems(user.role),
       },
       {
         label: 'Communication',
@@ -201,4 +208,24 @@ function getRoleSpecificItems(role?: string): readonly NavigationItem[] {
   } as const;
 
   return roleMap[role as keyof typeof roleMap] || [];
+}
+
+// Fonction pour les items du menu Actions selon le rôle
+function getActionsItems(role?: string): readonly NavigationItem[] {
+  if (!role) return [];
+
+  // Rôles qui ont accès au menu Actions
+  const actionsRoles = ['admin_groupe', 'proviseur', 'directeur', 'directeur_etudes'];
+  
+  if (!actionsRoles.includes(role)) {
+    return [];
+  }
+
+  return [
+    { to: '/user/documents', icon: FileText, label: 'Hub Documentaire' },
+    { to: '/user/resource-requests', icon: ClipboardList, label: 'État des Besoins' },
+    { to: '/user/share-files', icon: Share2, label: 'Partager des Fichiers' },
+    { to: '/user/school-network', icon: Network, label: 'Réseau des Écoles' },
+    { to: '/user/meeting-requests', icon: Calendar, label: 'Demande de Réunion' },
+  ];
 }

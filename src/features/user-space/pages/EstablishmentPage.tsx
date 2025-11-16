@@ -6,6 +6,7 @@
 
 import { memo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useToast } from '@/components/ui/use-toast';
 import { 
   Building2, 
   Users, 
@@ -22,7 +23,13 @@ import {
   BookOpen,
   Award,
   Search,
-  Eye
+  Eye,
+  MessageSquare,
+  FileText,
+  Calendar,
+  ClipboardList,
+  Share2,
+  X
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +39,20 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSchoolGroup } from '../hooks/useSchoolGroup';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+
+// Import des composants refactorisés
+import { StatsCard } from '../components/StatsCard';
+import { SchoolCard as SchoolCardComponent } from '../components/SchoolCard';
+
+// Import des modals
+import { ContactAdminModal } from '../components/modals/ContactAdminModal';
+import { ContactSchoolsModal } from '../components/modals/ContactSchoolsModal';
+import { ShareFilesModal } from '../components/modals/ShareFilesModal';
+import { ResourceRequestModal } from '../components/modals/ResourceRequestModal';
+import { useNavigate } from 'react-router-dom';
+
+// Import du Hub Documentaire
+import { DocumentHub } from '@/features/document-hub';
 
 /**
  * Interface pour les écoles
@@ -47,6 +68,7 @@ interface SchoolData {
   teachers_count: number;
   classes_count: number;
   created_at: string;
+  logo_url?: string;
 }
 
 /**
@@ -103,6 +125,7 @@ const useSchools = (schoolGroupId?: string) => {
             teachers_count: teachersCount || 0,
             classes_count: classesCount || 0,
             created_at: school.created_at,
+            logo_url: school.logo_url,
           } as SchoolData;
         })
       );
@@ -115,131 +138,22 @@ const useSchools = (schoolGroupId?: string) => {
 };
 
 /**
- * Composant KPI Card
- */
-const StatsCard = ({ 
-  title, 
-  value, 
-  subtitle, 
-  icon: Icon, 
-  color,
-  delay = 0
-}: { 
-  title: string; 
-  value: number | string; 
-  subtitle: string; 
-  icon: any; 
-  color: string;
-  delay?: number;
-}) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay, type: 'spring', stiffness: 100 }}
-    whileHover={{ scale: 1.02, y: -4 }}
-    className="relative group"
-  >
-    <div className={`absolute inset-0 bg-gradient-to-br ${color}/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300`} />
-    <Card className="relative p-6 bg-white/90 backdrop-blur-xl border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 rounded-2xl overflow-hidden">
-      <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${color}/10 rounded-full group-hover:scale-150 transition-transform duration-500`} />
-      <div className="relative z-10">
-        <div className="flex items-center justify-between mb-4">
-          <div className={`p-3 rounded-xl bg-gradient-to-br ${color}`}>
-            <Icon className="h-6 w-6 text-white" />
-          </div>
-          <TrendingUp className="h-4 w-4 text-green-500" />
-        </div>
-        <h3 className="text-sm font-medium text-gray-600 mb-1">{title}</h3>
-        <p className="text-3xl font-bold text-gray-900 mb-1">{value}</p>
-        <p className="text-xs text-gray-500">{subtitle}</p>
-      </div>
-    </Card>
-  </motion.div>
-);
-
-/**
- * Composant École Card
- */
-const SchoolCard = ({ school }: { school: SchoolData }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    whileHover={{ scale: 1.01 }}
-    className="relative group"
-  >
-    <div className="absolute inset-0 bg-gradient-to-br from-[#2A9D8F]/10 to-[#1D3557]/10 rounded-2xl blur-xl" />
-    <Card className="relative p-6 bg-white/90 backdrop-blur-xl border-white/60 shadow-lg hover:shadow-xl transition-all duration-300">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-[#2A9D8F] to-[#238b7e] rounded-xl flex items-center justify-center shadow-lg">
-            <School className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <h3 className="font-bold text-gray-900 text-lg">{school.name}</h3>
-            <Badge className={school.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-              {school.status === 'active' ? 'Actif' : 'Inactif'}
-            </Badge>
-          </div>
-        </div>
-        
-        <Button variant="ghost" size="sm">
-          <Eye className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Statistiques de l'école */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="text-center p-3 bg-blue-50 rounded-lg">
-          <GraduationCap className="h-5 w-5 text-blue-600 mx-auto mb-1" />
-          <div className="text-xl font-bold text-blue-600">{school.students_count}</div>
-          <div className="text-xs text-gray-600">Élèves</div>
-        </div>
-        
-        <div className="text-center p-3 bg-purple-50 rounded-lg">
-          <Users className="h-5 w-5 text-purple-600 mx-auto mb-1" />
-          <div className="text-xl font-bold text-purple-600">{school.teachers_count}</div>
-          <div className="text-xs text-gray-600">Enseignants</div>
-        </div>
-        
-        <div className="text-center p-3 bg-orange-50 rounded-lg">
-          <BookOpen className="h-5 w-5 text-orange-600 mx-auto mb-1" />
-          <div className="text-xl font-bold text-orange-600">{school.classes_count}</div>
-          <div className="text-xs text-gray-600">Classes</div>
-        </div>
-      </div>
-
-      {/* Informations de contact */}
-      <div className="space-y-2 text-sm text-gray-600">
-        {school.address && (
-          <div className="flex items-center gap-2">
-            <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-            <span className="truncate">{school.address}</span>
-          </div>
-        )}
-        {school.phone && (
-          <div className="flex items-center gap-2">
-            <Phone className="h-3.5 w-3.5 flex-shrink-0" />
-            <span>{school.phone}</span>
-          </div>
-        )}
-        {school.email && (
-          <div className="flex items-center gap-2">
-            <Mail className="h-3.5 w-3.5 flex-shrink-0" />
-            <span className="truncate">{school.email}</span>
-          </div>
-        )}
-      </div>
-    </Card>
-  </motion.div>
-);
-
-/**
  * Composant Principal
  */
 export const EstablishmentPage = memo(() => {
+  const { toast } = useToast();
   const { data: schoolGroup, isLoading: groupLoading, error: groupError } = useSchoolGroup();
   const { data: schools, isLoading: schoolsLoading } = useSchools(schoolGroup?.id);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const navigate = useNavigate();
+  
+  // États pour les modals
+  const [isContactAdminModalOpen, setIsContactAdminModalOpen] = useState(false);
+  const [isContactSchoolsModalOpen, setIsContactSchoolsModalOpen] = useState(false);
+  const [isShareFilesModalOpen, setIsShareFilesModalOpen] = useState(false);
+  const [showDocumentHub, setShowDocumentHub] = useState(false);
+  const [isResourceRequestModalOpen, setIsResourceRequestModalOpen] = useState(false);
 
   // Filtrer les écoles
   const filteredSchools = schools?.filter(school =>
@@ -251,6 +165,47 @@ export const EstablishmentPage = memo(() => {
   const totalStudents = schools?.reduce((sum, school) => sum + school.students_count, 0) || 0;
   const totalTeachers = schools?.reduce((sum, school) => sum + school.teachers_count, 0) || 0;
   const totalClasses = schools?.reduce((sum, school) => sum + school.classes_count, 0) || 0;
+
+  // Handlers pour les actions
+  const handleContactAdmin = () => {
+    setIsContactAdminModalOpen(true);
+  };
+
+  const handleNeedsStatement = () => {
+    setIsResourceRequestModalOpen(true);
+  };
+
+  const handleSchoolNetwork = () => {
+    setIsContactSchoolsModalOpen(true);
+  };
+
+  const handleMeetingRequest = () => {
+    toast({
+      title: "Demande de Réunion",
+      description: "Fonctionnalité de planification de réunion disponible prochainement.",
+    });
+  };
+
+  const handleBestPractices = () => {
+    setIsShareFilesModalOpen(true);
+  };
+
+  // Navigation vers les pages
+  const handleViewStaff = () => {
+    navigate('/user/staff-management');
+  };
+
+  const handleViewReports = () => {
+    navigate('/user/reports-management');
+  };
+
+  const handleViewClasses = () => {
+    navigate('/user/modules/classes');
+  };
+
+  const handleViewStats = () => {
+    navigate('/user/advanced-stats');
+  };
 
   if (groupLoading) {
     return (
@@ -410,11 +365,178 @@ export const EstablishmentPage = memo(() => {
           />
         </div>
 
-        {/* Section Écoles */}
+        {/* Section Actions et Communication */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
+          className="relative group"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-[#2A9D8F]/10 to-[#1D3557]/10 rounded-2xl blur-xl" />
+          <Card className="relative p-6 bg-white/90 backdrop-blur-xl border-white/60 shadow-xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-[#2A9D8F] to-[#238b7e] rounded-xl flex items-center justify-center">
+                <MessageSquare className="h-6 w-6 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Actions et Communication
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Contacter l'Admin Groupe */}
+              <button 
+                onClick={handleContactAdmin}
+                aria-label="Contacter l'administrateur du groupe scolaire"
+                className="group relative p-6 bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 rounded-2xl border-2 border-blue-200 hover:border-blue-400 transition-all duration-300 text-left hover:shadow-lg"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="p-3 rounded-xl bg-blue-500 group-hover:scale-110 transition-transform">
+                    <MessageSquare className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+                      Contacter l'Admin Groupe
+                      <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Envoyer un message ou une demande à l'administrateur du groupe
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              {/* État des Besoins */}
+              <button 
+                onClick={handleNeedsStatement}
+                aria-label="Créer et soumettre l'état des besoins de l'établissement"
+                className="group relative p-6 bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 rounded-2xl border-2 border-purple-200 hover:border-purple-400 transition-all duration-300 text-left"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="p-3 rounded-xl bg-purple-500 group-hover:scale-110 transition-transform">
+                    <ClipboardList className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+                      État des Besoins
+                      <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Monter et soumettre l'état des besoins de votre établissement
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Hub Documentaire */}
+              <button 
+                onClick={() => setShowDocumentHub(true)}
+                aria-label="Accéder au hub documentaire du groupe scolaire"
+                className="group relative p-6 bg-gradient-to-br from-cyan-50 to-cyan-100 hover:from-cyan-100 hover:to-cyan-200 rounded-2xl border-2 border-cyan-200 hover:border-cyan-400 transition-all duration-300 text-left hover:shadow-lg"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="p-3 rounded-xl bg-cyan-500 group-hover:scale-110 transition-transform">
+                    <FileText className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+                      Hub Documentaire
+                      <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-cyan-600 group-hover:translate-x-1 transition-all" />
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Partager et consulter les documents du groupe
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Communiquer avec Autres Écoles */}
+              <button 
+                onClick={handleSchoolNetwork}
+                aria-label="Accéder au réseau des écoles et échanger avec les collègues"
+                className="group relative p-6 bg-gradient-to-br from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 rounded-2xl border-2 border-orange-200 hover:border-orange-400 transition-all duration-300 text-left hover:shadow-lg"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="p-3 rounded-xl bg-orange-500 group-hover:scale-110 transition-transform">
+                    <Users className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+                      Réseau des Écoles
+                      <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-orange-600 group-hover:translate-x-1 transition-all" />
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Échanger avec les autres établissements du groupe
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Demande de Réunion */}
+              <button 
+                onClick={handleMeetingRequest}
+                aria-label="Planifier une réunion avec l'admin ou d'autres directeurs"
+                className="group relative p-6 bg-gradient-to-br from-pink-50 to-pink-100 hover:from-pink-100 hover:to-pink-200 rounded-2xl border-2 border-pink-200 hover:border-pink-400 transition-all duration-300 text-left"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="p-3 rounded-xl bg-pink-500 group-hover:scale-110 transition-transform">
+                    <Calendar className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+                      Demande de Réunion
+                      <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-pink-600 group-hover:translate-x-1 transition-all" />
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Planifier une réunion avec l'admin ou d'autres directeurs
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Partage de Bonnes Pratiques */}
+              <button 
+                onClick={handleBestPractices}
+                aria-label="Consulter et partager les bonnes pratiques du réseau"
+                className="group relative p-6 bg-gradient-to-br from-indigo-50 to-indigo-100 hover:from-indigo-100 hover:to-indigo-200 rounded-2xl border-2 border-indigo-200 hover:border-indigo-400 transition-all duration-300 text-left hover:shadow-lg"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="p-3 rounded-xl bg-indigo-500 group-hover:scale-110 transition-transform">
+                    <Share2 className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+                      Bonnes Pratiques
+                      <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Partager et consulter les bonnes pratiques du réseau
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {/* Note informative */}
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
+              <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm text-blue-900 font-medium mb-1">
+                  Communication avec le Groupe Scolaire
+                </p>
+                <p className="text-xs text-blue-700">
+                  Ces actions vous permettent de communiquer efficacement avec l'administration du groupe et de collaborer avec les autres établissements du réseau.
+                </p>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
+        {/* Section Écoles */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
           className="relative group"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-[#2A9D8F]/10 to-[#1D3557]/10 rounded-2xl blur-xl" />
@@ -440,13 +562,13 @@ export const EstablishmentPage = memo(() => {
             </div>
 
             {schoolsLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2, 3].map(i => <Skeleton key={i} className="h-64 w-full" />)}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {[1, 2].map(i => <Skeleton key={i} className="h-64 w-full" />)}
               </div>
             ) : filteredSchools.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {filteredSchools.map(school => (
-                  <SchoolCard key={school.id} school={school} />
+                  <SchoolCardComponent key={school.id} school={school} />
                 ))}
               </div>
             ) : (
@@ -464,6 +586,86 @@ export const EstablishmentPage = memo(() => {
           </Card>
         </motion.div>
       </div>
+
+      {/* Modals */}
+      <ContactAdminModal
+        isOpen={isContactAdminModalOpen}
+        onClose={() => setIsContactAdminModalOpen(false)}
+        groupName={schoolGroup?.name || 'Groupe Scolaire'}
+        schoolGroupId={schoolGroup?.id || ''}
+      />
+
+      <ContactSchoolsModal
+        isOpen={isContactSchoolsModalOpen}
+        onClose={() => setIsContactSchoolsModalOpen(false)}
+        schoolGroupId={schoolGroup?.id || ''}
+      />
+
+      <ShareFilesModal
+        isOpen={isShareFilesModalOpen}
+        onClose={() => setIsShareFilesModalOpen(false)}
+        schoolName={schoolGroup?.name || 'Groupe Scolaire'}
+        schoolId={schoolGroup?.id || ''}
+      />
+
+      <ResourceRequestModal
+        isOpen={isResourceRequestModalOpen}
+        onClose={() => setIsResourceRequestModalOpen(false)}
+        schoolName={schoolGroup?.name || 'Groupe Scolaire'}
+        schoolId={schoolGroup?.id || ''}
+      />
+
+      {/* Hub Documentaire - Modal Full Screen */}
+      {showDocumentHub && schoolGroup && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowDocumentHub(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ type: "spring", duration: 0.5 }}
+            className="fixed inset-4 md:inset-8 bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header du Modal */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-cyan-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Hub Documentaire</h2>
+                  <p className="text-sm text-gray-600">{schoolGroup.name}</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => setShowDocumentHub(false)}
+                variant="ghost"
+                size="sm"
+                className="gap-2 hover:bg-white/50"
+              >
+                <X className="h-4 w-4" />
+                Fermer
+              </Button>
+            </div>
+
+            {/* Contenu du Hub */}
+            <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+              <DocumentHub
+                schoolGroupId={schoolGroup.id}
+                currentUserId={schoolGroup.id} // TODO: Get actual user ID
+                schools={schools || []}
+                userRole="admin_groupe" // TODO: Get actual user role
+              />
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 });

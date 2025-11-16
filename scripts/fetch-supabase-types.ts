@@ -545,6 +545,127 @@ export interface Database {
           created_at?: string
         }
       }
+      resource_requests: {
+        Row: {
+          id: string
+          school_id: string
+          school_group_id: string
+          requested_by: string
+          status: 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed'
+          priority: 'low' | 'normal' | 'high' | 'urgent'
+          title: string
+          description: string | null
+          notes: string | null
+          total_estimated_amount: number
+          created_at: string
+          updated_at: string
+          approved_at: string | null
+          approved_by: string | null
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          school_id: string
+          school_group_id: string
+          requested_by: string
+          status?: 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed'
+          priority?: 'low' | 'normal' | 'high' | 'urgent'
+          title: string
+          description?: string | null
+          notes?: string | null
+          total_estimated_amount?: number
+          created_at?: string
+          updated_at?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          school_id?: string
+          school_group_id?: string
+          requested_by?: string
+          status?: 'pending' | 'approved' | 'rejected' | 'in_progress' | 'completed'
+          priority?: 'low' | 'normal' | 'high' | 'urgent'
+          title?: string
+          description?: string | null
+          notes?: string | null
+          total_estimated_amount?: number
+          created_at?: string
+          updated_at?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
+        }
+      }
+      resource_request_items: {
+        Row: {
+          id: string
+          request_id: string
+          resource_name: string
+          resource_category: string
+          quantity: number
+          unit: string
+          unit_price: number
+          total_price: number
+          justification: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          resource_name: string
+          resource_category: string
+          quantity: number
+          unit: string
+          unit_price: number
+          justification?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          resource_name?: string
+          resource_category?: string
+          quantity?: number
+          unit?: string
+          unit_price?: number
+          justification?: string | null
+          created_at?: string
+        }
+      }
+      resource_request_attachments: {
+        Row: {
+          id: string
+          request_id: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string | null
+          uploaded_by: string
+          uploaded_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type?: string | null
+          uploaded_by: string
+          uploaded_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string | null
+          uploaded_by?: string
+          uploaded_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -579,6 +700,9 @@ export interface Database {
     console.log('   ✅ inscriptions');
     console.log('   ✅ activity_logs');
     console.log('   ✅ notifications');
+    console.log('   ✅ resource_requests');
+    console.log('   ✅ resource_request_items');
+    console.log('   ✅ resource_request_attachments');
 
     return true;
 
