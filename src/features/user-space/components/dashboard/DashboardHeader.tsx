@@ -38,10 +38,10 @@ export const DashboardHeader = memo(() => {
           <div className="flex items-center gap-6">
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 bg-clip-text text-transparent mb-2">
-                Dashboard Proviseur
+                Proviseur {user?.firstName || ''}
               </h1>
               <p className="text-gray-600 text-lg font-medium">
-                Vue d'ensemble de votre établissement
+                Bienvenue sur votre tableau de bord
               </p>
             </div>
           </div>
@@ -55,16 +55,16 @@ export const DashboardHeader = memo(() => {
               </div>
               <div className="flex items-center gap-2 text-gray-600 text-sm">
                 <MapPin className="h-4 w-4 text-emerald-600" />
-                <span>{user?.school?.name || 'École'}</span>
+                <span>École</span>
               </div>
             </div>
             
             <div className="flex items-center gap-3 pl-6 border-l border-gray-200">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                {user?.name?.charAt(0) || 'P'}
+                {user?.firstName?.charAt(0) || 'P'}
               </div>
               <div>
-                <p className="font-semibold text-gray-900">{user?.name || 'Proviseur'}</p>
+                <p className="font-semibold text-gray-900">{user?.firstName} {user?.lastName}</p>
                 <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-0">
                   Proviseur
                 </Badge>
