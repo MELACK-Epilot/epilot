@@ -70,7 +70,7 @@ export const DirectorDashboard = memo(() => {
   const [isNiveauModalOpen, setIsNiveauModalOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year'>('month');
   const [selectedRange, setSelectedRange] = useState('2025-11');
-  const [comparisonType, setComparisonType] = useState<'previous' | 'same-last-year'>('previous');
+  const [comparisonType, setComparisonType] = useState<'month' | 'quarter' | 'year'>('month');
 
   // Transformation données: schoolLevels → niveauxEducatifs
   const niveauxEducatifs = useMemo(() => 
