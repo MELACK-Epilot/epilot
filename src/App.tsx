@@ -57,7 +57,7 @@ import { FinancesPage } from './features/user-space/pages/FinancesPage';
 import { ClassesPage } from './features/user-space/pages/ClassesPage';
 import { StaffPage } from './features/user-space/pages/StaffPage';
 import { StudentsPage } from './features/user-space/pages/StudentsPage';
-import { SchoolGroupPage } from './features/user-space/pages/SchoolGroupPage';
+import { EstablishmentPage } from './features/user-space/pages/EstablishmentPage';
 import { DirectorDashboard } from './features/user-space/pages/DirectorDashboard';
 import { PersonnelManagement } from './features/user-space/pages/PersonnelManagement';
 import { StudentsManagement } from './features/user-space/pages/StudentsManagement';
@@ -254,7 +254,7 @@ function App() {
             <Route index element={<UserDashboard />} />
             <Route path="debug" element={<UserDebug />} />
             <Route path="profile" element={<MyProfile />} />
-            <Route path="school-group" element={<SchoolGroupPage />} />
+            <Route path="school-group" element={<EstablishmentPage />} />
             <Route path="schedule" element={<MySchedule />} />
             <Route path="modules" element={<MyModules />} />
             <Route path="categories" element={<MyCategories />} />

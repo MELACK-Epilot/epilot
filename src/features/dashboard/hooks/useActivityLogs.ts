@@ -52,7 +52,7 @@ export const useActivityLogs = (filters?: ActivityLogFilters) => {
           )
         `)
         .order('created_at', { ascending: false })
-        .limit(100); // Limiter à 100 logs récents
+        .limit(500); // Limiter à 500 logs récents pour historique complet
 
       // Filtres
       if (filters?.query) {
@@ -125,20 +125,22 @@ export const useActivityLog = (id: string) => {
         .single();
 
       if (error) throw error;
+      if (!data) throw new Error('Log not found');
 
-      // @ts-ignore - Type casting for runtime data
+      // Type assertion for runtime data
+      const log = data as any;
       return {
-        id: data.id,
-        userId: data.user_id,
-        userName: data.user ? `${data.user.first_name} ${data.user.last_name}` : 'Système',
-        userRole: data.user?.role || 'system',
-        action: data.action,
-        entity: data.entity,
-        entityId: data.entity_id,
-        details: data.details,
-        ipAddress: data.ip_address,
-        userAgent: data.user_agent,
-        timestamp: data.created_at, // Utiliser created_at
+        id: log.id,
+        userId: log.user_id,
+        userName: log.user ? `${log.user.first_name} ${log.user.last_name}` : 'Système',
+        userRole: log.user?.role || 'system',
+        action: log.action,
+        entity: log.entity,
+        entityId: log.entity_id,
+        details: log.details,
+        ipAddress: log.ip_address,
+        userAgent: log.user_agent,
+        timestamp: log.created_at, // Utiliser created_at
       } as ActivityLog;
     },
     enabled: !!id,

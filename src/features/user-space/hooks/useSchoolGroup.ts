@@ -31,9 +31,23 @@ export const useSchoolGroup = () => {
   const { data: user } = useCurrentUser();
 
   return useQuery({
-    queryKey: ['school-group', user?.schoolGroupId],
+    queryKey: ['school-group', user?.schoolGroupId, user?.schoolId],
     queryFn: async () => {
-      if (!user?.schoolGroupId) {
+      let schoolGroupId = user?.schoolGroupId;
+
+      // Si pas de school_group_id direct, le récupérer depuis l'école
+      if (!schoolGroupId && user?.schoolId) {
+        const { data: schoolData, error: schoolError } = await supabase
+          .from('schools')
+          .select('school_group_id')
+          .eq('id', user.schoolId)
+          .single();
+
+        if (schoolError) throw schoolError;
+        schoolGroupId = (schoolData as any)?.school_group_id;
+      }
+
+      if (!schoolGroupId) {
         throw new Error('Aucun groupe scolaire associé');
       }
 
@@ -44,15 +58,10 @@ export const useSchoolGroup = () => {
           id,
           name,
           description,
-          address,
-          phone,
-          email,
-          website,
-          logo,
           status,
           created_at
         `)
-        .eq('id', user.schoolGroupId)
+        .eq('id', schoolGroupId)
         .single();
 
       if (error) throw error;
@@ -62,14 +71,14 @@ export const useSchoolGroup = () => {
       const { count: userCount } = await supabase
         .from('users')
         .select('id', { count: 'exact' })
-        .eq('school_group_id', user.schoolGroupId)
+        .eq('school_group_id', schoolGroupId)
         .eq('status', 'active');
 
       // Compter les écoles
       const { count: schoolCount } = await supabase
         .from('schools')
         .select('id', { count: 'exact' })
-        .eq('school_group_id', user.schoolGroupId)
+        .eq('school_group_id', schoolGroupId)
         .eq('status', 'active');
 
       // Récupérer l'abonnement actif
@@ -80,7 +89,7 @@ export const useSchoolGroup = () => {
           status,
           plans(name)
         `)
-        .eq('school_group_id', user.schoolGroupId)
+        .eq('school_group_id', schoolGroupId)
         .eq('status', 'active')
         .single();
 
@@ -92,11 +101,11 @@ export const useSchoolGroup = () => {
         id: groupData.id,
         name: groupData.name,
         description: groupData.description,
-        address: groupData.address,
-        phone: groupData.phone,
-        email: groupData.email,
-        website: groupData.website,
-        logo: groupData.logo,
+        address: undefined,
+        phone: undefined,
+        email: undefined,
+        website: undefined,
+        logo: undefined,
         status: groupData.status,
         created_at: groupData.created_at,
         total_schools: schoolCount || 0,
@@ -105,7 +114,7 @@ export const useSchoolGroup = () => {
         plan_name: subscriptionData?.plans?.name || 'Aucun plan',
       } as SchoolGroup;
     },
-    enabled: !!user?.schoolGroupId,
+    enabled: !!(user?.schoolGroupId || user?.schoolId),
     staleTime: 10 * 60 * 1000, // 10 minutes
     retry: 2,
   });

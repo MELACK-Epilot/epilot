@@ -3,7 +3,8 @@
  * Pour Proviseur/Directeur - Traçabilité complète des actions
  */
 
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,8 +25,6 @@ import {
   Calendar,
   User,
   AlertTriangle,
-  Shield,
-  Eye,
   Clock,
   MapPin,
   FileText,
@@ -38,9 +37,9 @@ import {
   DollarSign,
   Upload,
   BarChart3,
+  Eye,
 } from 'lucide-react';
 import { useActivityLogs, type ActivityLogFilters } from '@/features/dashboard/hooks/useActivityLogs';
-import { useCurrentUser } from '../hooks/useCurrentUser';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -155,9 +154,10 @@ ActivityLogItem.displayName = 'ActivityLogItem';
 
 // Composant principal
 export const ActivityLogsPageReal = memo(() => {
-  const { data: user } = useCurrentUser();
   const [filters, setFilters] = useState<ActivityLogFilters>({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const logsPerPage = 20;
 
   const { data: logs, isLoading, error, refetch } = useActivityLogs(filters);
 
@@ -186,6 +186,18 @@ export const ActivityLogsPageReal = memo(() => {
     log.entity.toLowerCase().includes(searchQuery.toLowerCase()) ||
     log.details?.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
+
+  // Pagination
+  const totalPages = Math.ceil(filteredLogs.length / logsPerPage);
+  const paginatedLogs = useMemo(() => {
+    const startIndex = (currentPage - 1) * logsPerPage;
+    return filteredLogs.slice(startIndex, startIndex + logsPerPage);
+  }, [filteredLogs, currentPage]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filters]);
 
   // Export CSV
   const handleExportCSV = () => {
@@ -231,102 +243,174 @@ export const ActivityLogsPageReal = memo(() => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/20 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-[#F8F9FA] via-[#E8F4F8] to-[#D4E9F7] p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         
-        {/* Header */}
-        <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-[#2A9D8F] to-[#238b7e] rounded-2xl flex items-center justify-center shadow-lg">
-                <Activity className="h-8 w-8 text-white" />
+        {/* Header avec Glassmorphisme */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative group"
+        >
+          {/* Shadow blur animé */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#2A9D8F]/20 to-[#1D3557]/20 rounded-3xl blur-2xl group-hover:blur-3xl transition-all duration-300" />
+          
+          <div className="relative bg-white/90 backdrop-blur-xl border border-white/60 rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300">
+            {/* Cercles décoratifs */}
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br from-[#2A9D8F]/10 to-transparent rounded-full blur-2xl" />
+            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-gradient-to-br from-[#1D3557]/10 to-transparent rounded-full blur-2xl" />
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-[#2A9D8F] to-[#238b7e] rounded-2xl flex items-center justify-center shadow-lg">
+                  <Activity className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900">Journal d'Activité</h1>
+                  <p className="text-gray-600 mt-1">Traçabilité complète des actions de votre école</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Journal d'Activité</h1>
-                <p className="text-gray-600 mt-1">Traçabilité complète des actions de votre école</p>
+              
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleExportCSV}
+                  disabled={!filteredLogs.length}
+                  className="gap-2 hover:bg-[#2A9D8F] hover:text-white hover:border-[#2A9D8F] transition-colors"
+                >
+                  <Download className="h-4 w-4" />
+                  Exporter CSV
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => refetch()}
+                  disabled={isLoading}
+                  className="gap-2 hover:bg-[#2A9D8F] hover:text-white hover:border-[#2A9D8F] transition-colors"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  Actualiser
+                </Button>
               </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleExportCSV}
-                disabled={!filteredLogs.length}
-                className="gap-2 hover:bg-[#2A9D8F] hover:text-white hover:border-[#2A9D8F] transition-colors"
-              >
-                <Download className="h-4 w-4" />
-                Exporter CSV
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => refetch()}
-                disabled={isLoading}
-                className="gap-2 hover:bg-[#2A9D8F] hover:text-white hover:border-[#2A9D8F] transition-colors"
-              >
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                Actualiser
-              </Button>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Statistiques */}
+        {/* Statistiques - Design Glassmorphisme */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="p-6 bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-600 mb-1">Total Actions</p>
-                <p className="text-3xl font-bold text-blue-900">{stats.total}</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
+          {/* Total Actions */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, type: 'spring', stiffness: 100 }}
+            whileHover={{ scale: 1.02, y: -4 }}
+            className="relative group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300" />
+            <Card className="relative p-6 bg-white/90 backdrop-blur-xl border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 rounded-2xl overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full group-hover:scale-150 transition-transform duration-500" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600">
                 <Activity className="h-6 w-6 text-white" />
               </div>
+              <BarChart3 className="h-4 w-4 text-green-500" />
             </div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-green-50 to-green-100/50 border-green-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-green-600 mb-1">Aujourd'hui</p>
-                <p className="text-3xl font-bold text-green-900">{stats.today}</p>
+              <div className="relative z-10">
+                <h3 className="text-sm font-medium text-gray-600 mb-1">Total Actions</h3>
+                <p className="text-3xl font-bold text-gray-900 mb-1">{stats.total}</p>
+                <p className="text-xs text-gray-500">Toutes les activités</p>
               </div>
-              <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
+            </Card>
+          </motion.div>
+
+          {/* Aujourd'hui */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, type: 'spring', stiffness: 100 }}
+            whileHover={{ scale: 1.02, y: -4 }}
+            className="relative group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300" />
+            <Card className="relative p-6 bg-white/90 backdrop-blur-xl border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 rounded-2xl overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-green-500/10 to-transparent rounded-full group-hover:scale-150 transition-transform duration-500" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-green-600">
                 <Clock className="h-6 w-6 text-white" />
               </div>
+              <BarChart3 className="h-4 w-4 text-green-500" />
             </div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-purple-50 to-purple-100/50 border-purple-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-purple-600 mb-1">Cette Semaine</p>
-                <p className="text-3xl font-bold text-purple-900">{stats.thisWeek}</p>
+              <div className="relative z-10">
+                <h3 className="text-sm font-medium text-gray-600 mb-1">Aujourd'hui</h3>
+                <p className="text-3xl font-bold text-gray-900 mb-1">{stats.today}</p>
+                <p className="text-xs text-gray-500">Actions du jour</p>
               </div>
-              <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
+            </Card>
+          </motion.div>
+
+          {/* Cette Semaine */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, type: 'spring', stiffness: 100 }}
+            whileHover={{ scale: 1.02, y: -4 }}
+            className="relative group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-purple-600/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300" />
+            <Card className="relative p-6 bg-white/90 backdrop-blur-xl border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 rounded-2xl overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-transparent rounded-full group-hover:scale-150 transition-transform duration-500" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600">
                 <Calendar className="h-6 w-6 text-white" />
               </div>
+              <BarChart3 className="h-4 w-4 text-green-500" />
             </div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-orange-50 to-orange-100/50 border-orange-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-orange-600 mb-1">Utilisateurs Actifs</p>
-                <p className="text-3xl font-bold text-orange-900">
-                  {new Set(logs?.map(l => l.userId)).size || 0}
-                </p>
+              <div className="relative z-10">
+                <h3 className="text-sm font-medium text-gray-600 mb-1">Cette Semaine</h3>
+                <p className="text-3xl font-bold text-gray-900 mb-1">{stats.thisWeek}</p>
+                <p className="text-xs text-gray-500">7 derniers jours</p>
               </div>
-              <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
+            </Card>
+          </motion.div>
+
+          {/* Utilisateurs Actifs */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, type: 'spring', stiffness: 100 }}
+            whileHover={{ scale: 1.02, y: -4 }}
+            className="relative group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 to-orange-600/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300" />
+            <Card className="relative p-6 bg-white/90 backdrop-blur-xl border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 rounded-2xl overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-orange-500/10 to-transparent rounded-full group-hover:scale-150 transition-transform duration-500" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600">
                 <User className="h-6 w-6 text-white" />
               </div>
+              <BarChart3 className="h-4 w-4 text-green-500" />
             </div>
-          </Card>
+              <div className="relative z-10">
+                <h3 className="text-sm font-medium text-gray-600 mb-1">Utilisateurs Actifs</h3>
+                <p className="text-3xl font-bold text-gray-900 mb-1">
+                  {new Set(logs?.map(l => l.userId)).size || 0}
+                </p>
+                <p className="text-xs text-gray-500">Membres distincts</p>
+              </div>
+            </Card>
+          </motion.div>
         </div>
 
-        {/* Filtres et recherche */}
-        <Card className="p-6">
+        {/* Filtres et recherche avec Glassmorphisme */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="relative group"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-[#2A9D8F]/10 to-[#1D3557]/10 rounded-2xl blur-xl" />
+          <Card className="relative p-6 bg-white/90 backdrop-blur-xl border-white/60 shadow-xl">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {/* Recherche */}
             <div className="lg:col-span-2 relative">
@@ -394,17 +478,141 @@ export const ActivityLogsPageReal = memo(() => {
               </Button>
             </div>
           )}
-        </Card>
+          </Card>
+        </motion.div>
+
+        {/* Breakdown par type d'action avec Glassmorphisme */}
+        {!isLoading && logs && logs.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="relative group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-[#2A9D8F]/10 to-[#1D3557]/10 rounded-2xl blur-xl" />
+            <Card className="relative p-6 bg-white/90 backdrop-blur-xl border-white/60 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-[#2A9D8F]" />
+                Répartition des Actions
+              </h3>
+              <p className="text-xs text-gray-500 flex items-center gap-1.5">
+                <span className="w-2 h-2 bg-[#2A9D8F] rounded-full animate-pulse"></span>
+                Cliquez pour filtrer
+              </p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {Object.entries(stats.byAction)
+                .sort(([, a], [, b]) => b - a)
+                .slice(0, 10)
+                .map(([action, count]) => {
+                  const config = ACTION_CONFIG[action] || ACTION_CONFIG.view;
+                  const ActionIcon = config.icon;
+                  const isActive = filters.action === action;
+                  
+                  // Extraire la couleur du badge pour la bordure
+                  const getBorderColor = (colorClass: string) => {
+                    if (colorClass.includes('green')) return 'border-green-500 hover:border-green-600 shadow-green-200';
+                    if (colorClass.includes('blue')) return 'border-blue-500 hover:border-blue-600 shadow-blue-200';
+                    if (colorClass.includes('red')) return 'border-red-500 hover:border-red-600 shadow-red-200';
+                    if (colorClass.includes('purple')) return 'border-purple-500 hover:border-purple-600 shadow-purple-200';
+                    if (colorClass.includes('teal')) return 'border-teal-500 hover:border-teal-600 shadow-teal-200';
+                    if (colorClass.includes('orange')) return 'border-orange-500 hover:border-orange-600 shadow-orange-200';
+                    if (colorClass.includes('yellow')) return 'border-yellow-500 hover:border-yellow-600 shadow-yellow-200';
+                    if (colorClass.includes('emerald')) return 'border-emerald-500 hover:border-emerald-600 shadow-emerald-200';
+                    if (colorClass.includes('indigo')) return 'border-indigo-500 hover:border-indigo-600 shadow-indigo-200';
+                    if (colorClass.includes('pink')) return 'border-pink-500 hover:border-pink-600 shadow-pink-200';
+                    return 'border-gray-500 hover:border-gray-600 shadow-gray-200';
+                  };
+                  
+                  const borderColor = getBorderColor(config.color);
+                  
+                  return (
+                    <button
+                      key={action}
+                      onClick={() => {
+                        if (isActive) {
+                          setFilters({ ...filters, action: undefined });
+                        } else {
+                          setFilters({ ...filters, action });
+                        }
+                      }}
+                      className={`
+                        group relative flex items-center gap-3 p-4 rounded-xl 
+                        border-2 transition-all duration-300 cursor-pointer
+                        ${isActive 
+                          ? `${borderColor} bg-white shadow-lg scale-105` 
+                          : 'border-gray-200 bg-white hover:bg-gray-50 hover:shadow-md hover:scale-102'
+                        }
+                      `}
+                    >
+                      {/* Indicateur actif */}
+                      {isActive && (
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse" />
+                      )}
+                      
+                      <div className={`
+                        p-2.5 rounded-xl transition-all duration-300
+                        ${config.color.replace('text-', 'bg-').replace('800', '500')}
+                        ${isActive ? 'scale-110 shadow-lg' : 'group-hover:scale-110'}
+                      `}>
+                        <ActionIcon className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="text-xs font-medium text-gray-600 mb-0.5">{config.label}</p>
+                        <p className="text-xl font-bold text-gray-900">{count}</p>
+                      </div>
+                      
+                      {/* Effet de brillance au hover */}
+                      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                    </button>
+                  );
+                })}
+            </div>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Liste des logs */}
         {isLoading ? (
           <ActivityLogsLoading />
         ) : filteredLogs.length > 0 ? (
-          <div className="space-y-4">
-            {filteredLogs.map(log => (
-              <ActivityLogItem key={log.id} log={log} />
-            ))}
-          </div>
+          <>
+            <div className="space-y-4">
+              {paginatedLogs.map(log => (
+                <ActivityLogItem key={log.id} log={log} />
+              ))}
+            </div>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-600">
+                    Page {currentPage} sur {totalPages} • {filteredLogs.length} résultat(s)
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Précédent
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Suivant
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
+          </>
         ) : (
           <Card className="p-12">
             <div className="text-center">
