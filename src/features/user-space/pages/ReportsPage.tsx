@@ -25,7 +25,9 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useDirectorDashboard } from '../hooks/useDirectorDashboard';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import { useSchoolInfo } from '../hooks/useSchoolInfo';
 import { ReportPreviewModal } from '../components/ReportPreviewModal';
+import { ReportGenerateModal } from '../components/ReportGenerateModal';
 import { generatePDF, generateExcel, generateCSV } from '../utils/reportExports';
 
 // Types de rapports disponibles
@@ -55,6 +57,9 @@ export const ReportsPage = () => {
     schoolLevels, 
     isLoading 
   } = useDirectorDashboard();
+  
+  // Charger les infos de l'école
+  const { data: schoolInfo } = useSchoolInfo();
 
   // Charger les filtres depuis le cache
   const [selectedPeriod, setSelectedPeriod] = useState<ReportPeriod>(() => {
@@ -67,8 +72,9 @@ export const ReportsPage = () => {
     return (cached as ReportType | 'all') || 'all';
   });
 
-  // État pour la modal de prévisualisation
+  // États pour les modals
   const [previewReport, setPreviewReport] = useState<ReportType | null>(null);
+  const [generateReport, setGenerateReport] = useState<ReportType | null>(null);
 
   // Sauvegarder les filtres dans le cache
   useEffect(() => {
@@ -479,7 +485,7 @@ export const ReportsPage = () => {
                   Aperçu
                 </Button>
                 <Button
-                  onClick={() => handleGenerateReport(report.type)}
+                  onClick={() => setGenerateReport(report.type)}
                   className="flex-1 bg-gradient-to-r from-[#2A9D8F] to-[#238b7e] hover:from-[#238b7e] hover:to-[#1d7a6f]"
                   size="sm"
                 >
@@ -514,7 +520,24 @@ export const ReportsPage = () => {
           period={selectedPeriod}
           globalKPIs={globalKPIs}
           schoolLevels={schoolLevels}
-          onGenerate={() => handleGenerateReport(previewReport)}
+          onGenerate={() => {
+            setPreviewReport(null);
+            setGenerateReport(previewReport);
+          }}
+        />
+      )}
+
+      {/* Modal de génération */}
+      {generateReport && (
+        <ReportGenerateModal
+          isOpen={!!generateReport}
+          onClose={() => setGenerateReport(null)}
+          reportType={generateReport}
+          period={selectedPeriod}
+          globalKPIs={globalKPIs}
+          schoolLevels={schoolLevels}
+          schoolInfo={schoolInfo}
+          onGenerate={(format) => handleGenerateReport(generateReport, format)}
         />
       )}
     </div>
