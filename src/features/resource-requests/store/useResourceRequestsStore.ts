@@ -49,6 +49,12 @@ export interface ResourceRequest {
   school?: {
     id: string;
     name: string;
+    logo_url?: string;
+  };
+  school_group?: {
+    id: string;
+    name: string;
+    logo?: string;
   };
   items?: ResourceRequestItem[];
 }

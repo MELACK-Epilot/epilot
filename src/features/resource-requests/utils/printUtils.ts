@@ -13,10 +13,14 @@ export const printRequestWithLogos = async (request: ResourceRequest) => {
   const totalAmount = request.items?.reduce((sum, item) => sum + (item.total_price || 0), 0) || request.total_estimated_amount || 0;
 
   // Récupérer les informations du groupe et de l'école depuis la demande
-  const schoolGroupName = 'Groupe Scolaire'; // À récupérer depuis la BDD si nécessaire
+  const schoolGroupName = request.school_group?.name || 'Groupe Scolaire';
   const schoolName = request.school?.name || 'École';
   const requesterName = `${request.requester?.first_name || ''} ${request.requester?.last_name || ''}`.trim();
   const requesterRole = request.requester?.role || '';
+  
+  // Logos - Utiliser les logos réels s'ils existent
+  const schoolGroupLogo = request.school_group?.logo || '/images/logo/epilot-logo.png';
+  const schoolLogo = request.school?.logo_url || '/images/logo/school-placeholder.png';
 
   const html = `
     <!DOCTYPE html>
@@ -45,7 +49,7 @@ export const printRequestWithLogos = async (request: ResourceRequest) => {
             align-items: flex-start;
             margin-bottom: 30px;
             padding-bottom: 20px;
-            border-bottom: 4px solid #9333ea;
+            border-bottom: 4px solid #1D3557;
           }
 
           .header-left {
@@ -74,14 +78,24 @@ export const printRequestWithLogos = async (request: ResourceRequest) => {
             width: 80px;
             height: 80px;
             border-radius: 12px;
-            background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
+            background: linear-gradient(135deg, #1D3557 0%, #2A9D8F 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-weight: bold;
             font-size: 24px;
-            box-shadow: 0 4px 6px rgba(147, 51, 234, 0.2);
+            box-shadow: 0 4px 6px rgba(29, 53, 87, 0.2);
+          }
+          
+          .logo-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+            object-fit: contain;
+            background: white;
+            padding: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
           }
 
           .logo-text {
@@ -95,7 +109,7 @@ export const printRequestWithLogos = async (request: ResourceRequest) => {
           .main-title {
             font-size: 28px;
             font-weight: bold;
-            color: #9333ea;
+            color: #1D3557;
             margin-bottom: 8px;
           }
 
@@ -106,15 +120,23 @@ export const printRequestWithLogos = async (request: ResourceRequest) => {
           }
 
           .epilot-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #1D3557 0%, #2A9D8F 100%);
             color: white;
-            padding: 6px 16px;
+            padding: 8px 16px;
             border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
             margin-top: 8px;
-            box-shadow: 0 2px 4px rgba(147, 51, 234, 0.3);
+            box-shadow: 0 2px 4px rgba(29, 53, 87, 0.3);
+          }
+          
+          .epilot-logo {
+            width: 24px;
+            height: 24px;
+            filter: brightness(0) invert(1);
           }
 
           /* Informations principales */
@@ -184,7 +206,7 @@ export const printRequestWithLogos = async (request: ResourceRequest) => {
           .section-title {
             font-size: 18px;
             font-weight: bold;
-            color: #9333ea;
+            color: #1D3557;
             margin-bottom: 12px;
             padding-bottom: 8px;
             border-bottom: 2px solid #e5e7eb;
@@ -197,7 +219,7 @@ export const printRequestWithLogos = async (request: ResourceRequest) => {
             background: white;
             padding: 16px;
             border-radius: 8px;
-            border-left: 4px solid #9333ea;
+            border-left: 4px solid #2A9D8F;
           }
 
           /* Tableau des ressources */
@@ -212,7 +234,7 @@ export const printRequestWithLogos = async (request: ResourceRequest) => {
           }
 
           .resources-table thead {
-            background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
+            background: linear-gradient(135deg, #1D3557 0%, #2A9D8F 100%);
             color: white;
           }
 
@@ -248,11 +270,11 @@ export const printRequestWithLogos = async (request: ResourceRequest) => {
 
           .total-row td {
             padding: 16px 12px !important;
-            border-top: 2px solid #9333ea;
+            border-top: 2px solid #1D3557;
           }
 
           .amount-highlight {
-            color: #9333ea;
+            color: #1D3557;
             font-weight: bold;
           }
 
@@ -296,7 +318,7 @@ export const printRequestWithLogos = async (request: ResourceRequest) => {
           .footer-epilot {
             margin-top: 12px;
             font-weight: 600;
-            color: #9333ea;
+            color: #1D3557;
           }
 
           /* Print styles */
@@ -316,10 +338,11 @@ export const printRequestWithLogos = async (request: ResourceRequest) => {
       <body>
         <!-- En-tête avec logos -->
         <div class="print-header">
-          <!-- Logo Groupe Scolaire -->
+          <!-- Logo E-Pilot / Groupe Scolaire -->
           <div class="header-left">
             <div class="logo-container">
-              <div class="logo-placeholder">GS</div>
+              <img src="${schoolGroupLogo}" alt="Logo E-Pilot" class="logo-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+              <div class="logo-placeholder" style="display: none;">EP</div>
               <div class="logo-text">${schoolGroupName}</div>
             </div>
           </div>
@@ -334,7 +357,8 @@ export const printRequestWithLogos = async (request: ResourceRequest) => {
           <!-- Logo École -->
           <div class="header-right">
             <div class="logo-container">
-              <div class="logo-placeholder">📚</div>
+              <img src="${schoolLogo}" alt="Logo ${schoolName}" class="logo-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+              <div class="logo-placeholder" style="display: none;">📚</div>
               <div class="logo-text">${schoolName}</div>
             </div>
           </div>
@@ -478,12 +502,12 @@ export const printRequestWithLogos = async (request: ResourceRequest) => {
             // Créer barre d'outils
             const toolbar = document.createElement('div');
             toolbar.className = 'no-print';
-            toolbar.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%); padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000; display: flex; justify-content: center; gap: 12px;';
+            toolbar.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: linear-gradient(135deg, #1D3557 0%, #2A9D8F 100%); padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000; display: flex; justify-content: center; gap: 12px;';
             
             // Bouton Imprimer
             const printBtn = document.createElement('button');
             printBtn.innerHTML = '🖨️ Imprimer';
-            printBtn.style.cssText = 'background: white; color: #9333ea; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s;';
+            printBtn.style.cssText = 'background: white; color: #1D3557; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s;';
             printBtn.onmouseover = function() { this.style.transform = 'scale(1.05)'; };
             printBtn.onmouseout = function() { this.style.transform = 'scale(1)'; };
             printBtn.onclick = function() {

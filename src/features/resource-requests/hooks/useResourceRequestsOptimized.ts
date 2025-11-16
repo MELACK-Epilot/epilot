@@ -51,7 +51,13 @@ export const useResourceRequestsOptimized = (schoolGroupId: string, currentUserI
           ),
           school:school_id (
             id,
-            name
+            name,
+            logo_url
+          ),
+          school_group:school_group_id (
+            id,
+            name,
+            logo
           ),
           items:resource_request_items (
             id,
