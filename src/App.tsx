@@ -62,6 +62,7 @@ import { DirectorDashboard } from './features/user-space/pages/DirectorDashboard
 import { PersonnelManagement } from './features/user-space/pages/PersonnelManagement';
 import { StudentsManagement } from './features/user-space/pages/StudentsManagement';
 import { ProtectedModuleRoute } from './components/ProtectedModuleRoute';
+import { UserPermissionsProvider } from './contexts/UserPermissionsProvider';
 
 // Composant de chargement
 const LoadingSpinner = () => (
@@ -243,7 +244,9 @@ function App() {
           {/* Routes Espace Utilisateur École - Tous les rôles utilisateur + admin_groupe */}
           <Route path="/user" element={
             <ProtectedRoute roles={[...USER_ROLES, 'admin_groupe']}>
-              <UserSpaceLayout />
+              <UserPermissionsProvider>
+                <UserSpaceLayout />
+              </UserPermissionsProvider>
             </ProtectedRoute>
           }>
             <Route index element={<UserDashboard />} />
