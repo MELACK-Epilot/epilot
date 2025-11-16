@@ -6,6 +6,7 @@
 import { memo, useMemo, useState } from 'react';
 import { GraduationCap, BookOpen, Building2 } from 'lucide-react';
 import { useDirectorDashboard } from '../hooks/useDirectorDashboard';
+import { SkeletonLoader } from '@/components/ui/loading-states';
 
 // Composants dashboard
 import { DashboardHeader } from '../components/dashboard/DashboardHeader';
@@ -199,16 +200,9 @@ export const DirectorDashboard = memo(() => {
     // TODO: Implémenter export CSV
   };
 
-  // Rendu: Loading
+  // Rendu: Loading avec Skeleton (montre la structure)
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/20 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg">Chargement du dashboard...</p>
-        </div>
-      </div>
-    );
+    return <SkeletonLoader />;
   }
 
   // Rendu: Error
