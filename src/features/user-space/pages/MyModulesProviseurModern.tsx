@@ -137,7 +137,7 @@ export default function MyModulesProviseurModern() {
           
           <div className="relative z-10 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#2A9D8F] to-[#238b7e] rounded-2xl flex items-center justify-center shadow-lg">
                 <Package className="w-8 h-8 text-white" />
               </div>
               <div>
@@ -145,7 +145,7 @@ export default function MyModulesProviseurModern() {
                   Mes Modules
                 </h1>
                 <p className="text-gray-600 text-lg font-medium">
-                  Bienvenue {user?.firstName} {user?.lastName}
+                  Gérez vos modules et accédez à vos outils
                 </p>
               </div>
             </div>

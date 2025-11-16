@@ -7,7 +7,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/features/auth/store/auth.store';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+
+// Configuration du cache
+const CACHE_KEY = 'e-pilot-modules-cache';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Interface pour un module assigné au Proviseur
@@ -73,6 +77,23 @@ export interface CategoryWithCount {
 export const useProviseurModules = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [cachedModules, setCachedModules] = useState<ProviseurModule[] | null>(null);
+
+  // ⚡ Charger depuis le cache au montage
+  useEffect(() => {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      try {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < CACHE_DURATION) {
+          console.log('⚡ [useProviseurModules] Modules chargés depuis le cache (instantané)');
+          setCachedModules(data);
+        }
+      } catch (e) {
+        console.warn('Cache modules invalide');
+      }
+    }
+  }, []);
 
   // Query pour récupérer tous les modules du Proviseur
   const modulesQuery = useQuery({
@@ -81,10 +102,11 @@ export const useProviseurModules = () => {
     staleTime: 5 * 60 * 1000, // ⚡ Cache 5 minutes
     gcTime: 10 * 60 * 1000, // ⚡ Garde en mémoire 10 minutes
     refetchOnWindowFocus: false, // ⚡ Pas de refetch au focus
+    initialData: cachedModules || undefined, // ⚡ Utiliser le cache comme données initiales
     queryFn: async (): Promise<ProviseurModule[]> => {
       if (!user?.id) throw new Error('Utilisateur non authentifié');
 
-      console.log('🔄 [useProviseurModules] Chargement des modules pour:', user.id);
+      console.log('🔄 [useProviseurModules] Chargement des modules depuis Supabase...');
 
       const { data, error } = await supabase
         .from('user_modules')
@@ -156,7 +178,13 @@ export const useProviseurModules = () => {
         category_color: item.modules.business_categories?.color,
       }));
 
-      console.log('✅ [useProviseurModules] Modules chargés:', modules.length);
+      // ⚡ Sauvegarder en cache
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        data: modules,
+        timestamp: Date.now()
+      }));
+
+      console.log('✅ [useProviseurModules] Modules chargés et mis en cache:', modules.length);
       return modules;
     },
   });
@@ -322,8 +350,8 @@ export const useProviseurModules = () => {
     stats: statsQuery.data,
     categories: categoriesQuery.data || [],
     
-    // États de chargement
-    isLoading: modulesQuery.isLoading || statsQuery.isLoading || categoriesQuery.isLoading,
+    // États de chargement (pas de loading si cache disponible)
+    isLoading: (modulesQuery.isLoading && !cachedModules) || statsQuery.isLoading || categoriesQuery.isLoading,
     isError: modulesQuery.isError || statsQuery.isError || categoriesQuery.isError,
     error: modulesQuery.error || statsQuery.error || categoriesQuery.error,
     
