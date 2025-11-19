@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/features/auth/store/auth.store';
 import { NotificationsDropdown } from './NotificationsDropdown';
+import { UserProfileDialog } from './users/UserProfileDialog';
 
 /**
  * Navigation items avec rôles
@@ -97,7 +98,14 @@ const allNavigationItems = [
     icon: Settings,
     href: '/dashboard/assign-modules',
     badge: null,
-    roles: ['admin_groupe', 'group_admin'], // ✅ Admin Groupe uniquement
+    roles: ['admin_groupe', 'group_admin'], // ✅ Admin Groupe uniquement (Ancien)
+  },
+  {
+    title: 'Permissions & Modules',
+    icon: Settings,
+    href: '/dashboard/permissions-modules',
+    badge: null,
+    roles: ['admin_groupe', 'group_admin'], // ✅ Admin Groupe uniquement (Nouveau - Page dédiée)
   },
   {
     title: 'Catégories Métiers',
@@ -161,13 +169,15 @@ const allNavigationItems = [
  * Composant Layout principal - OPTIMISÉ
  */
 export const DashboardLayout = () => {
+  const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     const saved = localStorage.getItem('sidebar-open');
     return saved !== null ? JSON.parse(saved) : true;
   });
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
@@ -554,9 +564,9 @@ export const DashboardLayout = () => {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsProfileDialogOpen(true)}>
                     <Users className="w-4 h-4 mr-2" />
-                    Profil
+                    Mon Profil Personnel
                   </DropdownMenuItem>
                   <DropdownMenuItem>
                     <Settings className="w-4 h-4 mr-2" />
@@ -620,6 +630,12 @@ export const DashboardLayout = () => {
           </div>
         </footer>
       </div>
+
+      {/* Modal Profil Personnel */}
+      <UserProfileDialog
+        open={isProfileDialogOpen}
+        onOpenChange={setIsProfileDialogOpen}
+      />
     </div>
   );
 };

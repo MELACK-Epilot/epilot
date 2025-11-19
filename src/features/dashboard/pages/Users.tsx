@@ -21,6 +21,7 @@ import {
   AlertCircle,
   Calendar,
   Package,
+  User as UserIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,14 +35,16 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DataTable } from '../components/DataTable';
-import { UnifiedUserFormDialog } from '../components/UnifiedUserFormDialog';
+import { GroupUserFormDialog } from '../components/users/GroupUserFormDialog';
+import { UserProfileDialog } from '../components/users/UserProfileDialog';
 import { UserAvatar } from '../components/UserAvatar';
 import { AnimatedContainer } from '../components/AnimatedCard';
 import { UsersStats, UsersFilters, UsersCharts, UsersGridView } from '../components/users';
-import { UserModulesDialog } from '../components/users/UserModulesDialog.v2';
+import { UserModulesDialog } from '../components/users/UserModulesDialog.v5';
 import { useUsers, useUserStats, useDeleteUser, useResetPassword, useUsersRealtime, userKeys } from '../hooks/useUsers';
 import { useSchools } from '../hooks/useSchools-simple';
 import { useSchoolGroups } from '../hooks/useSchoolGroups';
+import { useLoginHistory } from '../hooks/useUserProfile';
 import type { User } from '../types/dashboard.types';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -83,6 +86,7 @@ export const Users = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [selectedUserForModules, setSelectedUserForModules] = useState<User | null>(null);
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
 
   // 2. Hooks
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
@@ -117,6 +121,9 @@ export const Users = () => {
   const deleteUser = useDeleteUser();
   const resetPassword = useResetPassword();
   const queryClient = useQueryClient();
+  
+  // Charger l'historique de connexion de l'utilisateur sélectionné
+  const { data: loginHistoryData } = useLoginHistory(selectedUser?.id, 5);
   
   // Activer le temps réel
   useUsersRealtime({ schoolGroupId: effectiveSchoolGroupId });
@@ -327,6 +334,68 @@ export const Users = () => {
       },
     },
     {
+      accessorKey: 'accessProfileCode',
+      header: 'Profil d\'Accès',
+      cell: ({ row }: any) => {
+        const user = row.original as User;
+        
+        // Pas de profil pour les admins
+        if (user.role === 'super_admin' || user.role === 'admin_groupe') {
+          return (
+            <span className="text-xs text-gray-400 italic">N/A</span>
+          );
+        }
+        
+        const profileLabels: Record<string, { label: string; icon: string; color: string }> = {
+          chef_etablissement: { 
+            label: 'Chef d\'Établissement', 
+            icon: '👔',
+            color: 'bg-blue-100 text-blue-700 border-blue-200'
+          },
+          financier_sans_suppression: { 
+            label: 'Financier', 
+            icon: '💰',
+            color: 'bg-green-100 text-green-700 border-green-200'
+          },
+          administratif_basique: { 
+            label: 'Administratif', 
+            icon: '📋',
+            color: 'bg-purple-100 text-purple-700 border-purple-200'
+          },
+          enseignant_saisie_notes: { 
+            label: 'Enseignant', 
+            icon: '👨‍🏫',
+            color: 'bg-orange-100 text-orange-700 border-orange-200'
+          },
+          parent_consultation: { 
+            label: 'Parent', 
+            icon: '👨‍👩‍👧',
+            color: 'bg-pink-100 text-pink-700 border-pink-200'
+          },
+          eleve_consultation: { 
+            label: 'Élève', 
+            icon: '🎓',
+            color: 'bg-indigo-100 text-indigo-700 border-indigo-200'
+          },
+        };
+        
+        const profile = user.accessProfileCode ? profileLabels[user.accessProfileCode] : null;
+        
+        if (!profile) {
+          return (
+            <span className="text-xs text-gray-400 italic">Non défini</span>
+          );
+        }
+        
+        return (
+          <Badge className={`${profile.color} border`}>
+            <span className="mr-1">{profile.icon}</span>
+            {profile.label}
+          </Badge>
+        );
+      },
+    },
+    {
       accessorKey: 'schoolGroupName',
       header: 'Groupe Scolaire',
       cell: ({ row }: any) => {
@@ -392,45 +461,88 @@ export const Users = () => {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={(e) => {
-                e.stopPropagation();
-                handleView(user);
-              }}>
-                <Eye className="h-4 w-4 mr-2" />
-                Voir détails
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => {
-                e.stopPropagation();
-                handleEdit(user);
-              }}>
-                <Edit className="h-4 w-4 mr-2" />
-                Modifier
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => {
-                e.stopPropagation();
-                handleResetPassword(user);
-              }}>
-                <Key className="h-4 w-4 mr-2" />
-                Réinitialiser MDP
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => {
-                e.stopPropagation();
-                setSelectedUserForModules(user);
-              }}>
-                <Package className="h-4 w-4 mr-2" />
-                Assigner modules
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                className="text-red-600"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(user);
-                }}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Supprimer
-              </DropdownMenuItem>
+              
+              {/* Menu spécial si c'est l'admin lui-même */}
+              {user.id === currentUser?.id ? (
+                <>
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    setIsProfileDialogOpen(true);
+                  }}>
+                    <UserIcon className="h-4 w-4 mr-2" />
+                    Mon Profil Personnel
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    handleResetPassword(user);
+                  }}>
+                    <Key className="h-4 w-4 mr-2" />
+                    Changer mon mot de passe
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  <DropdownMenuItem 
+                    disabled
+                    className="text-gray-400 cursor-not-allowed"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer (vous-même)
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <>
+                  {/* Menu normal pour les autres utilisateurs */}
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    handleView(user);
+                  }}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Voir détails
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    handleEdit(user);
+                  }}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Modifier
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    handleResetPassword(user);
+                  }}>
+                    <Key className="h-4 w-4 mr-2" />
+                    Réinitialiser MDP
+                  </DropdownMenuItem>
+                  
+                  {/* Assigner modules uniquement pour utilisateurs d'école */}
+                  {user.role !== 'super_admin' && user.role !== 'admin_groupe' && (
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedUserForModules(user);
+                    }}>
+                      <Package className="h-4 w-4 mr-2" />
+                      Assigner modules
+                    </DropdownMenuItem>
+                  )}
+                  
+                  <DropdownMenuSeparator />
+                  
+                  <DropdownMenuItem 
+                    className="text-red-600"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(user);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         );
@@ -504,13 +616,13 @@ export const Users = () => {
       />
 
       {/* Dialogs */}
-      <UnifiedUserFormDialog
+      <GroupUserFormDialog
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         mode="create"
       />
 
-      <UnifiedUserFormDialog
+      <GroupUserFormDialog
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
         user={selectedUser}
@@ -617,58 +729,148 @@ export const Users = () => {
                 </div>
               </div>
 
-              {/* Section Association */}
-              <div className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-xl p-6 border border-green-200">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-[#2A9D8F]" />
-                  Association & Permissions
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white rounded-lg p-4 border border-green-100">
-                    <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
-                      <Shield className="h-4 w-4" />
-                      <span className="font-medium">Rôle</span>
+              {/* Section Association - Différente selon le rôle */}
+              {selectedUser.role === 'admin_groupe' ? (
+                /* Modal spécifique Admin Groupe */
+                <div className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-xl p-6 border border-green-200">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-[#2A9D8F]" />
+                    Groupe Scolaire & Responsabilités
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white rounded-lg p-4 border border-green-100">
+                      <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                        <Shield className="h-4 w-4" />
+                        <span className="font-medium">Rôle</span>
+                      </div>
+                      <div className="text-gray-900 font-medium flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-blue-600" />
+                        Administrateur de Groupe
+                      </div>
                     </div>
-                    <div className="text-gray-900 font-medium">
-                      {(() => {
-                        const roleLabels: Record<string, string> = {
-                          super_admin: 'Super Admin E-Pilot',
-                          admin_groupe: 'Administrateur de Groupe',
-                          proviseur: 'Proviseur',
-                          directeur: 'Directeur',
-                          directeur_etudes: 'Directeur des Études',
-                          secretaire: 'Secrétaire',
-                          comptable: 'Comptable',
-                          enseignant: 'Enseignant',
-                          surveillant: 'Surveillant',
-                          bibliothecaire: 'Bibliothécaire',
-                          cpe: 'CPE',
-                          documentaliste: 'Documentaliste',
-                          eleve: 'Élève',
-                          parent: 'Parent',
-                          gestionnaire_cantine: 'Gestionnaire de Cantine',
-                          autre: 'Autre',
-                        };
-                        return roleLabels[selectedUser.role] || selectedUser.role;
-                      })()}
+                    <div className="bg-white rounded-lg p-4 border border-green-100">
+                      <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                        <Building2 className="h-4 w-4" />
+                        <span className="font-medium">Groupe Scolaire</span>
+                      </div>
+                      <div className="text-gray-900 font-medium">
+                        {selectedUser.schoolGroupName || 'Non assigné'}
+                      </div>
                     </div>
-                  </div>
-                  <div className="bg-white rounded-lg p-4 border border-green-100">
-                    <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
-                      <Building2 className="h-4 w-4" />
-                      <span className="font-medium">Groupe Scolaire</span>
-                    </div>
-                    <div className="text-gray-900 font-medium flex items-center gap-2">
-                      {selectedUser.role === 'super_admin' && (
-                        <Shield className="h-4 w-4 text-[#1D3557]" />
-                      )}
-                      {selectedUser.role === 'super_admin' 
-                        ? 'Administrateur Système E-Pilot' 
-                        : (selectedUser.schoolGroupName || 'Non assigné')}
+                    <div className="bg-white rounded-lg p-4 border border-green-100 md:col-span-2">
+                      <div className="flex items-center gap-2 text-gray-500 text-sm mb-2">
+                        <Package className="h-4 w-4" />
+                        <span className="font-medium">Responsabilités</span>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <span className="text-green-600">✓</span>
+                          <span>Gère <strong>toutes les écoles</strong> du groupe</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <span className="text-green-600">✓</span>
+                          <span>Crée et gère les utilisateurs (enseignants, personnel)</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <span className="text-green-600">✓</span>
+                          <span>Assigne les modules selon le plan d'abonnement</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <span className="text-green-600">✓</span>
+                          <span>Accès complet à tout le réseau d'écoles</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                /* Modal standard pour autres utilisateurs */
+                <div className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-xl p-6 border border-green-200">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-[#2A9D8F]" />
+                    Association & Permissions
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white rounded-lg p-4 border border-green-100">
+                      <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                        <Shield className="h-4 w-4" />
+                        <span className="font-medium">Rôle</span>
+                      </div>
+                      <div className="text-gray-900 font-medium">
+                        {(() => {
+                          const roleLabels: Record<string, string> = {
+                            super_admin: 'Super Admin E-Pilot',
+                            admin_groupe: 'Administrateur de Groupe',
+                            proviseur: 'Proviseur',
+                            directeur: 'Directeur',
+                            directeur_etudes: 'Directeur des Études',
+                            secretaire: 'Secrétaire',
+                            comptable: 'Comptable',
+                            enseignant: 'Enseignant',
+                            surveillant: 'Surveillant',
+                            bibliothecaire: 'Bibliothécaire',
+                            cpe: 'CPE',
+                            documentaliste: 'Documentaliste',
+                            eleve: 'Élève',
+                            parent: 'Parent',
+                            gestionnaire_cantine: 'Gestionnaire de Cantine',
+                            autre: 'Autre',
+                          };
+                          return roleLabels[selectedUser.role] || selectedUser.role;
+                        })()}
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 border border-green-100">
+                      <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                        <Shield className="h-4 w-4" />
+                        <span className="font-medium">Profil d'Accès</span>
+                      </div>
+                      <div className="text-gray-900 font-medium">
+                        {(() => {
+                          if (selectedUser.role === 'super_admin' || selectedUser.role === 'admin_groupe') {
+                            return <span className="text-gray-400 italic">N/A (Admin)</span>;
+                          }
+                          
+                          const profileLabels: Record<string, { label: string; icon: string }> = {
+                            chef_etablissement: { label: 'Chef d\'Établissement', icon: '👔' },
+                            financier_sans_suppression: { label: 'Financier', icon: '💰' },
+                            administratif_basique: { label: 'Administratif', icon: '📋' },
+                            enseignant_saisie_notes: { label: 'Enseignant', icon: '👨‍🏫' },
+                            parent_consultation: { label: 'Parent', icon: '👨‍👩‍👧' },
+                            eleve_consultation: { label: 'Élève', icon: '🎓' },
+                          };
+                          
+                          const profile = selectedUser.accessProfileCode ? profileLabels[selectedUser.accessProfileCode] : null;
+                          
+                          if (!profile) {
+                            return <span className="text-orange-600 italic">Non défini</span>;
+                          }
+                          
+                          return (
+                            <span>
+                              {profile.icon} {profile.label}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 border border-green-100">
+                      <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                        <Building2 className="h-4 w-4" />
+                        <span className="font-medium">Groupe Scolaire</span>
+                      </div>
+                      <div className="text-gray-900 font-medium flex items-center gap-2">
+                        {selectedUser.role === 'super_admin' && (
+                          <Shield className="h-4 w-4 text-[#1D3557]" />
+                        )}
+                        {selectedUser.role === 'super_admin' 
+                          ? 'Administrateur Système E-Pilot' 
+                          : (selectedUser.schoolGroupName || 'Non assigné')}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Section Activité */}
               <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl p-6 border border-gray-200">
@@ -676,11 +878,12 @@ export const Users = () => {
                   <Clock className="h-5 w-5 text-gray-600" />
                   Activité du compte
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  {/* Compte créé */}
                   <div className="bg-white rounded-lg p-4 border border-gray-100">
                     <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
                       <Calendar className="h-4 w-4" />
-                      <span className="font-medium">Créé le</span>
+                      <span className="font-medium">Compte créé</span>
                     </div>
                     <div className="text-gray-900 font-medium">
                       {format(new Date(selectedUser.createdAt), 'dd MMMM yyyy à HH:mm', { locale: fr })}
@@ -689,7 +892,43 @@ export const Users = () => {
                       {formatDistanceToNow(new Date(selectedUser.createdAt), { addSuffix: true, locale: fr })}
                     </div>
                   </div>
-                  {selectedUser.lastLoginAt && (
+                  
+                  {/* Historique de connexion */}
+                  {loginHistoryData && loginHistoryData.length > 0 && (
+                    <div className="bg-white rounded-lg p-4 border border-gray-100">
+                      <div className="flex items-center gap-2 text-gray-500 text-sm mb-3">
+                        <Clock className="h-4 w-4" />
+                        <span className="font-medium">Dernières connexions</span>
+                      </div>
+                      <div className="space-y-2">
+                        {loginHistoryData.slice(0, 3).map((login: any, index: number) => (
+                          <div key={index} className="flex items-center justify-between py-2 border-b last:border-0">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${login.status === 'success' ? 'bg-green-500' : 'bg-red-500'}`} />
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {login.device_type || 'Appareil inconnu'}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {login.location_city && login.location_country 
+                                    ? `${login.location_city}, ${login.location_country}`
+                                    : 'Localisation inconnue'}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {login.login_at 
+                                ? formatDistanceToNow(new Date(login.login_at), { addSuffix: true, locale: fr })
+                                : 'Date inconnue'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Fallback si pas d'historique */}
+                  {(!loginHistoryData || loginHistoryData.length === 0) && selectedUser.lastLoginAt && (
                     <div className="bg-white rounded-lg p-4 border border-gray-100">
                       <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
                         <Clock className="h-4 w-4" />
@@ -715,16 +954,32 @@ export const Users = () => {
                 >
                   Fermer
                 </Button>
-                <Button 
-                  onClick={() => {
-                    setIsDetailDialogOpen(false);
-                    handleEdit(selectedUser!);
-                  }}
-                  className="flex-1 bg-[#1D3557] hover:bg-[#2A9D8F]"
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Modifier
-                </Button>
+                
+                {/* Cacher "Modifier" si c'est l'admin lui-même */}
+                {selectedUser?.id === currentUser?.id ? (
+                  <Button 
+                    onClick={() => {
+                      setIsDetailDialogOpen(false);
+                      setIsProfileDialogOpen(true);
+                    }}
+                    className="flex-1 bg-[#1D3557] hover:bg-[#2A9D8F]"
+                  >
+                    <UserIcon className="h-4 w-4 mr-2" />
+                    Mon Profil Personnel
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={() => {
+                      setIsDetailDialogOpen(false);
+                      handleEdit(selectedUser!);
+                    }}
+                    className="flex-1 bg-[#1D3557] hover:bg-[#2A9D8F]"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Modifier
+                  </Button>
+                )}
+                
                 <Button 
                   variant="outline"
                   onClick={() => handleResetPassword(selectedUser!)}
@@ -774,6 +1029,36 @@ export const Users = () => {
                 </div>
               </div>
               
+              {/* Avertissement spécifique pour Admin Groupe */}
+              {selectedUser.role === 'admin_groupe' && (
+                <div className="mt-4 p-4 bg-orange-50 border-2 border-orange-300 rounded-lg">
+                  <p className="text-sm text-orange-900 font-bold flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    🚨 SUPPRESSION D'UN ADMIN DE GROUPE
+                  </p>
+                  <ul className="text-sm text-orange-800 mt-2 space-y-1 list-disc list-inside">
+                    <li>Toutes les écoles de son groupe seront orphelines</li>
+                    <li>Tous les utilisateurs du groupe perdront leur admin</li>
+                    <li>Les données du groupe resteront mais sans gestionnaire</li>
+                    <li>Cette action nécessite une extrême prudence</li>
+                  </ul>
+                </div>
+              )}
+              
+              {/* Avertissement pour utilisateurs d'école */}
+              {selectedUser.role !== 'super_admin' && selectedUser.role !== 'admin_groupe' && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800 font-medium">
+                    ℹ️ Suppression d'un utilisateur d'école
+                  </p>
+                  <ul className="text-sm text-blue-700 mt-1 space-y-1 list-disc list-inside">
+                    <li>Ses modules assignés seront retirés</li>
+                    <li>Son profil d'accès sera supprimé</li>
+                    <li>Ses données personnelles seront effacées</li>
+                  </ul>
+                </div>
+              )}
+              
               <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-red-800 font-medium">
                   ⚠️ ATTENTION : Cette action est irréversible !
@@ -822,6 +1107,12 @@ export const Users = () => {
         user={selectedUserForModules}
         isOpen={!!selectedUserForModules}
         onClose={() => setSelectedUserForModules(null)}
+      />
+
+      {/* Dialog Profil Personnel */}
+      <UserProfileDialog
+        open={isProfileDialogOpen}
+        onOpenChange={setIsProfileDialogOpen}
       />
     </AnimatedContainer>
   );

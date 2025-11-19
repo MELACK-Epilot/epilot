@@ -43,8 +43,8 @@ export const useMonthlyRevenue = (months: number = 6) => {
         // Récupérer les dépenses mensuelles depuis expenses
         const { data: expenses, error: expensesError } = await supabase
           .from('expenses')
-          .select('amount, expense_date, status')
-          .gte('expense_date', startDate.toISOString())
+          .select('amount, date, status')
+          .gte('date', startDate.toISOString())
           .in('status', ['paid', 'pending']);
 
         if (expensesError) throw expensesError;
@@ -80,7 +80,7 @@ export const useMonthlyRevenue = (months: number = 6) => {
 
         // Agréger les dépenses
         expenses?.forEach((expense: any) => {
-          const date = new Date(expense.expense_date);
+          const date = new Date(expense.date);
           const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
           if (monthsData[monthKey]) {
             monthsData[monthKey].expenses += expense.amount || 0;

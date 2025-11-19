@@ -33,6 +33,9 @@ export interface User {
   lastName: string;
   role: UserRole;
   avatar?: string;
+  gender?: 'male' | 'female' | 'other';
+  dateOfBirth?: string;
+  phone?: string;
   schoolGroupId?: string;
   schoolGroupName?: string; // Nom du groupe scolaire
   schoolGroupLogo?: string; // Logo du groupe scolaire

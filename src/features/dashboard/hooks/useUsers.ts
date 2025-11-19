@@ -161,6 +161,7 @@ export const useUsers = (filters?: UserFilters) => {
         gender: user.gender || undefined,
         dateOfBirth: user.date_of_birth || undefined,
         role: (user.role || 'admin_groupe') as User['role'],
+        accessProfileCode: user.access_profile_code || undefined, // ✅ AJOUT: Profil d'accès
         schoolGroupId: user.school_group_id || undefined,
         schoolGroupName: user.role === 'super_admin'
           ? 'Administrateur Système E-Pilot'
@@ -455,6 +456,7 @@ interface UpdateUserInput {
   email?: string;
   phone?: string;
   role?: string; // ✅ AJOUT : Permettre la mise à jour du rôle
+  accessProfileCode?: string; // ✅ AJOUT : Profil d'accès
   schoolGroupId?: string;
   schoolId?: string; // École d'affectation
   status?: 'active' | 'inactive' | 'suspended';
@@ -482,12 +484,13 @@ export const useUpdateUser = () => {
       if (updates.lastName !== undefined) updateData.last_name = updates.lastName;
       if (updates.email !== undefined) updateData.email = updates.email;
       if (updates.phone !== undefined) updateData.phone = updates.phone;
-      if (updates.role !== undefined) updateData.role = updates.role; // ✅ AJOUT : Mise à jour du rôle
+      if (updates.role !== undefined) updateData.role = updates.role;
+      if (updates.accessProfileCode !== undefined) updateData.access_profile_code = updates.accessProfileCode;
       if (updates.schoolGroupId !== undefined) updateData.school_group_id = updates.schoolGroupId;
       if (updates.schoolId !== undefined) updateData.school_id = updates.schoolId;
       if (updates.status !== undefined) updateData.status = updates.status;
-      if (updates.gender !== undefined) updateData.gender = updates.gender; // ✅ AJOUT : Mise à jour du genre
-      if (updates.dateOfBirth !== undefined) updateData.date_of_birth = updates.dateOfBirth; // ✅ AJOUT : Mise à jour de la date de naissance
+      if (updates.gender !== undefined) updateData.gender = updates.gender;
+      if (updates.dateOfBirth !== undefined) updateData.date_of_birth = updates.dateOfBirth;
 
       if (updates.avatarFile) {
         const path = await uploadAvatar(id, updates.avatarFile);
@@ -508,22 +511,64 @@ export const useUpdateUser = () => {
 
       return data;
     },
+    // ✅ OPTIMISTIC UPDATE: Mise à jour immédiate de l'UI avant la réponse serveur
+    onMutate: async (newUser) => {
+      // Annuler les requêtes en cours pour éviter les conflits
+      await queryClient.cancelQueries({ queryKey: userKeys.lists() });
+      
+      // Sauvegarder l'état précédent pour rollback en cas d'erreur
+      const previousUsers = queryClient.getQueryData(userKeys.lists());
+      
+      // Mettre à jour optimistiquement le cache
+      queryClient.setQueriesData({ queryKey: userKeys.lists() }, (old: any) => {
+        if (!old?.users) return old;
+        
+        return {
+          ...old,
+          users: old.users.map((user: any) =>
+            user.id === newUser.id
+              ? {
+                  ...user,
+                  firstName: newUser.firstName ?? user.firstName,
+                  lastName: newUser.lastName ?? user.lastName,
+                  email: newUser.email ?? user.email,
+                  phone: newUser.phone ?? user.phone,
+                  role: newUser.role ?? user.role,
+                  accessProfileCode: newUser.accessProfileCode ?? user.accessProfileCode,
+                  status: newUser.status ?? user.status,
+                  gender: newUser.gender ?? user.gender,
+                  dateOfBirth: newUser.dateOfBirth ?? user.dateOfBirth,
+                  updatedAt: new Date().toISOString(),
+                }
+              : user
+          ),
+        };
+      });
+      
+      return { previousUsers };
+    },
     onSuccess: (data, variables) => {
-      // Invalider TOUS les caches utilisateurs pour forcer le refetch
+      // Invalider les caches pour refetch les données fraîches
       queryClient.invalidateQueries({ queryKey: userKeys.all });
       queryClient.invalidateQueries({ queryKey: userKeys.lists() });
       queryClient.invalidateQueries({ queryKey: userKeys.detail(variables.id) });
-      
-      // Forcer un refetch immédiat
-      queryClient.refetchQueries({ queryKey: userKeys.lists() });
       
       // ✅ Alerte de succès moderne
       const userName = `${variables.firstName || data.first_name} ${variables.lastName || data.last_name}`;
       alertUserUpdated(userName);
     },
-    onError: (error: any) => {
+    onError: (error: any, newUser, context) => {
+      // ✅ ROLLBACK: Restaurer l'état précédent en cas d'erreur
+      if (context?.previousUsers) {
+        queryClient.setQueryData(userKeys.lists(), context.previousUsers);
+      }
+      
       // ✅ Alerte d'erreur
       alertOperationFailed('modifier', 'l\'utilisateur', error.message);
+    },
+    // ✅ TOUJOURS refetch après succès ou erreur pour garantir la cohérence
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.lists() });
     },
   });
 };

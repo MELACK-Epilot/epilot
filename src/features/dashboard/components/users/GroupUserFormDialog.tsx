@@ -49,18 +49,30 @@ import { useAuth } from '@/features/auth/store/auth.store';
  * Rôles disponibles pour l'Admin de Groupe (Liste Officielle Congo)
  */
 const USER_ROLES = [
-  { value: 'proviseur', label: '🎓 Proviseur' },
-  { value: 'directeur', label: '👔 Directeur' },
-  { value: 'directeur_etudes', label: '📋 Directeur des Études' },
-  { value: 'secretaire', label: '📝 Secrétaire' },
-  { value: 'comptable', label: '💰 Comptable' },
-  { value: 'enseignant', label: '👨‍🏫 Enseignant' },
-  { value: 'surveillant', label: '👮 Surveillant' },
-  { value: 'bibliothecaire', label: '📚 Bibliothécaire' },
-  { value: 'eleve', label: '🎒 Élève' },
-  { value: 'parent', label: '👨‍👩‍👧‍👦 Parent' },
-  { value: 'gestionnaire_cantine', label: '🍽️ Gestionnaire de Cantine' },
-  { value: 'autre', label: '👤 Autre' },
+  { value: 'proviseur', label: '🎓 Proviseur', profile: 'chef_etablissement' },
+  { value: 'directeur', label: '👔 Directeur', profile: 'chef_etablissement' },
+  { value: 'directeur_etudes', label: '📋 Directeur des Études', profile: 'chef_etablissement' },
+  { value: 'secretaire', label: '📝 Secrétaire', profile: 'administratif_basique' },
+  { value: 'comptable', label: '💰 Comptable', profile: 'financier_sans_suppression' },
+  { value: 'enseignant', label: '👨‍🏫 Enseignant', profile: 'enseignant_saisie_notes' },
+  { value: 'surveillant', label: '👮 Surveillant', profile: 'chef_etablissement' },
+  { value: 'bibliothecaire', label: '📚 Bibliothécaire', profile: 'administratif_basique' },
+  { value: 'eleve', label: '🎒 Élève', profile: 'eleve_consultation' },
+  { value: 'parent', label: '👨‍👩‍👧‍👦 Parent', profile: 'parent_consultation' },
+  { value: 'gestionnaire_cantine', label: '🍽️ Gestionnaire de Cantine', profile: 'administratif_basique' },
+  { value: 'autre', label: '👤 Autre', profile: 'chef_etablissement' },
+] as const;
+
+/**
+ * Profils d'accès disponibles
+ */
+const ACCESS_PROFILES = [
+  { value: 'chef_etablissement', label: '🏫 Chef d\'Établissement', description: 'Accès complet (Directeur/Proviseur)' },
+  { value: 'financier_sans_suppression', label: '💰 Comptable/Économe', description: 'Finances uniquement, sans suppression' },
+  { value: 'administratif_basique', label: '📋 Secrétaire', description: 'Administration et consultation' },
+  { value: 'enseignant_saisie_notes', label: '👨‍🏫 Enseignant', description: 'Saisie notes uniquement' },
+  { value: 'parent_consultation', label: '👨‍👩‍👧 Parent', description: 'Consultation enfants uniquement' },
+  { value: 'eleve_consultation', label: '🎒 Élève', description: 'Consultation propres données' },
 ] as const;
 
 /**
@@ -122,6 +134,16 @@ const baseUserSchema = z.object({
   schoolId: z
     .string()
     .min(1, 'Veuillez sélectionner une école'),
+  accessProfileCode: z.enum([
+    'chef_etablissement',
+    'financier_sans_suppression',
+    'administratif_basique',
+    'enseignant_saisie_notes',
+    'parent_consultation',
+    'eleve_consultation',
+  ], {
+    errorMap: () => ({ message: 'Veuillez sélectionner un profil d\'accès' }),
+  }).optional().or(z.literal('')),
   avatar: z.string().optional(),
 });
 
@@ -155,6 +177,7 @@ interface GroupUserFormDialogProps {
 
 export const GroupUserFormDialog = ({ open, onOpenChange, user, mode }: GroupUserFormDialogProps) => {
   const [isPending, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false); // ✅ État pour bloquer double soumission
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(user?.avatar || null);
   const [avatarRemoved, setAvatarRemoved] = useState(false);
@@ -181,6 +204,7 @@ export const GroupUserFormDialog = ({ open, onOpenChange, user, mode }: GroupUse
         phone: '',
         role: 'enseignant' as const,
         schoolId: '',
+        accessProfileCode: 'enseignant_saisie_notes' as const,
         password: '',
         sendWelcomeEmail: true,
         avatar: '',
@@ -195,6 +219,7 @@ export const GroupUserFormDialog = ({ open, onOpenChange, user, mode }: GroupUse
       phone: user?.phone || '',
       role: user?.role || 'enseignant',
       schoolId: user?.schoolId || '',
+      accessProfileCode: (user as any)?.accessProfileCode || '',
       status: user?.status || 'active',
       avatar: user?.avatar || '',
     };
@@ -215,7 +240,7 @@ export const GroupUserFormDialog = ({ open, onOpenChange, user, mode }: GroupUse
       setAvatarRemoved(false);
       setShowPassword(false);
     }
-  }, [open, defaultValues, form, user]);
+  }, [open, defaultValues, user]); // ✅ Retirer 'form' des dépendances
 
   const handleAvatarChange = useCallback((file: File | null, preview: string | null) => {
     setAvatarFile(file);
@@ -224,6 +249,11 @@ export const GroupUserFormDialog = ({ open, onOpenChange, user, mode }: GroupUse
   }, []);
 
   const onSubmit = async (data: CreateUserFormValues | UpdateUserFormValues) => {
+    // ✅ Bloquer immédiatement pour éviter double soumission
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    
     startTransition(async () => {
       try {
         const formData = {
@@ -247,6 +277,7 @@ export const GroupUserFormDialog = ({ open, onOpenChange, user, mode }: GroupUse
             email: formData.email,
             phone: formData.phone,
             role: formData.role, // ✅ IMPORTANT : Inclure le rôle
+            accessProfileCode: formData.accessProfileCode, // ✅ AJOUT : Profil d'accès
             gender: formData.gender,
             dateOfBirth: formData.dateOfBirth,
             schoolGroupId: formData.schoolGroupId,
@@ -258,10 +289,21 @@ export const GroupUserFormDialog = ({ open, onOpenChange, user, mode }: GroupUse
           toast.success('Utilisateur modifié avec succès');
         }
 
+        // ✅ Invalider les queries pour rafraîchissement automatique
+        await queryClient.invalidateQueries({ queryKey: ['users'] });
+        await queryClient.invalidateQueries({ queryKey: ['user-stats'] });
+        
+        // Fermer le modal et réinitialiser
         onOpenChange(false);
         form.reset();
+        setAvatarFile(null);
+        setAvatarPreview(null);
+        setAvatarRemoved(false);
       } catch (error: any) {
         toast.error(error.message || 'Une erreur est survenue');
+      } finally {
+        // ✅ Débloquer après traitement
+        setIsSubmitting(false);
       }
     });
   };
@@ -436,7 +478,17 @@ export const GroupUserFormDialog = ({ open, onOpenChange, user, mode }: GroupUse
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Rôle *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Auto-sélectionner le profil correspondant au rôle
+                        const selectedRole = USER_ROLES.find(r => r.value === value);
+                        if (selectedRole) {
+                          form.setValue('accessProfileCode', selectedRole.profile as any);
+                        }
+                      }} 
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner un rôle" />
@@ -450,6 +502,9 @@ export const GroupUserFormDialog = ({ open, onOpenChange, user, mode }: GroupUse
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormDescription>
+                      Le profil d'accès sera automatiquement sélectionné
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -484,6 +539,45 @@ export const GroupUserFormDialog = ({ open, onOpenChange, user, mode }: GroupUse
                   </FormItem>
                 )}
               />
+
+              {/* Profil d'Accès - UNIQUEMENT pour utilisateurs d'école */}
+              {form.watch('role') && !['super_admin', 'admin_groupe'].includes(form.watch('role')) && (
+                <FormField
+                  control={form.control}
+                  name="accessProfileCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Profil d'Accès *</FormLabel>
+                      <Select 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                        }}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionner un profil" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {ACCESS_PROFILES.map((profile) => (
+                            <SelectItem key={profile.value} value={profile.value}>
+                              <div className="flex flex-col">
+                                <span>{profile.label}</span>
+                                <span className="text-xs text-gray-500">{profile.description}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Définit les permissions de l'utilisateur dans le système
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
                 </div>
             </div>
@@ -609,13 +703,13 @@ export const GroupUserFormDialog = ({ open, onOpenChange, user, mode }: GroupUse
               </Button>
               <Button
                 type="submit"
-                disabled={isPending}
+                disabled={isPending || isSubmitting}
                 className="bg-[#2A9D8F] hover:bg-[#238276]"
               >
-                {isPending ? (
+                {(isPending || isSubmitting) ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {mode === 'create' ? 'Création...' : 'Modification...'}
+                    {mode === 'create' ? 'Création...' : 'Enregistrement...'}
                   </>
                 ) : (
                   <>

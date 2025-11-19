@@ -12,7 +12,7 @@ import { AnimatedSection } from '@/components/ui/animated-section';
 import { useUsers } from '../hooks/useUsers';
 import { useSchoolGroupModules } from '../hooks/useSchoolGroupModules';
 import { useAssignmentStats } from '../hooks/useAssignmentStats';
-import { UserModulesDialog } from '../components/users/UserModulesDialog.v2';
+import { UserModulesDialog } from '../components/users/UserModulesDialog.v5';
 import { DuplicatePermissionsDialog } from '../components/users/DuplicatePermissionsDialog';
 import { ViewPermissionsDialog } from '../components/users/ViewPermissionsDialog';
 import { useAuth } from '@/features/auth/store/auth.store';

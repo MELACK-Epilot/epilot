@@ -351,7 +351,10 @@ export const printRequestWithLogos = async (request: ResourceRequest) => {
           <div class="header-center">
             <div class="main-title">DEMANDE DE RESSOURCES</div>
             <div class="subtitle">État des Besoins</div>
-            <div class="epilot-badge">⚡ E-Pilot Congo</div>
+            <div class="epilot-badge">
+              <img src="/images/logo/logo.svg" alt="E-Pilot" class="epilot-logo" />
+              E-Pilot Congo
+            </div>
           </div>
 
           <!-- Logo École -->

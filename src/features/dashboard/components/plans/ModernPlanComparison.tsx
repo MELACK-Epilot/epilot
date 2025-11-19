@@ -306,7 +306,10 @@ export const ModernPlanComparison = ({ plans }: ModernPlanComparisonProps) => {
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center">
-                  <features[0].icon className="w-4 h-4 text-slate-600" />
+                  {(() => {
+                    const IconComponent = features[0].icon;
+                    return <IconComponent className="w-4 h-4 text-slate-600" />;
+                  })()}
                 </div>
                 <span className="font-semibold text-slate-900">
                   {categoryLabels[category as keyof typeof categoryLabels]}

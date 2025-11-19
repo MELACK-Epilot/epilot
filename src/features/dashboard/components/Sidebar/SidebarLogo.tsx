@@ -9,6 +9,7 @@
 
 import { memo } from 'react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/features/auth/store/auth.store';
 import type { SidebarLogoProps } from './types';
 
 /**
@@ -16,6 +17,37 @@ import type { SidebarLogoProps } from './types';
  * Affiche le logo E-Pilot avec animations fluides
  */
 export const SidebarLogo = memo<SidebarLogoProps>(({ isOpen }) => {
+  const { user } = useAuth();
+  
+  // Déterminer le label du rôle
+  const getRoleLabel = () => {
+    if (!user?.role) return 'Utilisateur';
+    
+    const role = user.role as string;
+    
+    switch (role) {
+      case 'super_admin':
+        return 'Super Admin';
+      case 'admin_groupe':
+        return 'Admin Groupe';
+      case 'proviseur':
+      case 'directeur':
+        return 'Direction';
+      case 'comptable':
+        return 'Comptabilité';
+      case 'secretaire':
+        return 'Secrétariat';
+      case 'enseignant':
+        return 'Enseignant';
+      case 'parent':
+        return 'Parent';
+      case 'eleve':
+        return 'Élève';
+      default:
+        return 'Utilisateur';
+    }
+  };
+  
   return (
     <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
       {isOpen ? (
@@ -65,7 +97,7 @@ export const SidebarLogo = memo<SidebarLogoProps>(({ isOpen }) => {
                 "transition-opacity duration-300"
               )}
             >
-              Super Admin
+              {getRoleLabel()}
             </span>
           </div>
         </div>

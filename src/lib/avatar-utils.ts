@@ -20,7 +20,12 @@ export const getAvatarUrl = (avatarPath: string | null | undefined): string | nu
     return avatarPath;
   }
 
-  // Cas 3 : Chemin relatif - Générer l'URL publique depuis Supabase Storage
+  // Cas 3 : URL base64 (preview temporaire)
+  if (avatarPath.startsWith('data:image/')) {
+    return avatarPath;
+  }
+
+  // Cas 4 : Chemin relatif - Générer l'URL publique depuis Supabase Storage
   try {
     const { data } = supabase.storage
       .from('avatars')

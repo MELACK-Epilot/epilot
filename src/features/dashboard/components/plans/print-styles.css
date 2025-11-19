@@ -1,0 +1,53 @@
+/**
+ * Styles d'impression pour PlanSubscriptionsPanel
+ */
+
+@media print {
+  /* Masquer les éléments non imprimables */
+  .no-print {
+    display: none !important;
+  }
+  
+  /* Afficher les éléments réservés à l'impression */
+  .print-only {
+    display: block !important;
+  }
+  
+  /* Optimiser la mise en page */
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  
+  /* Éviter les coupures de page dans les cartes */
+  .card {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  /* Ajuster la grille pour l'impression */
+  .grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  /* Masquer les ombres et effets */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  
+  /* Optimiser les couleurs */
+  .bg-gradient-to-br {
+    background: #f3f4f6 !important;
+  }
+  
+  /* En-tête de page */
+  @page {
+    margin: 2cm;
+  }
+  
+  /* Titre de la page */
+  h1, h2 {
+    page-break-after: avoid;
+  }
+}

@@ -221,11 +221,8 @@ function getActionsItems(role?: string): readonly NavigationItem[] {
     return [];
   }
 
-  return [
-    { to: '/user/documents', icon: FileText, label: 'Hub Documentaire' },
-    { to: '/user/resource-requests', icon: ClipboardList, label: 'État des Besoins' },
-    { to: '/user/share-files', icon: Share2, label: 'Partager des Fichiers' },
-    { to: '/user/school-network', icon: Network, label: 'Réseau des Écoles' },
-    { to: '/user/meeting-requests', icon: Calendar, label: 'Demande de Réunion' },
-  ];
+  // TODO: Ces actions seront intégrées comme modules plus tard
+  // Hub Documentaire, État des Besoins, Partager des Fichiers, 
+  // Réseau des Écoles, Demande de Réunion
+  return [];
 }

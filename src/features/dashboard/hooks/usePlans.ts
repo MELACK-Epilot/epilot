@@ -207,6 +207,9 @@ export const useCreatePlan = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: planKeys.lists() });
       queryClient.invalidateQueries({ queryKey: planKeys.stats() });
+      // Invalider aussi les queries avec contenu (modules/catégories)
+      queryClient.invalidateQueries({ queryKey: ['plan-with-content'] });
+      queryClient.invalidateQueries({ queryKey: ['all-plans-with-content'] });
     },
   });
 };
@@ -254,6 +257,8 @@ export const useUpdatePlan = () => {
       queryClient.invalidateQueries({ queryKey: planKeys.lists() });
       queryClient.invalidateQueries({ queryKey: planKeys.detail(variables.id) });
       queryClient.invalidateQueries({ queryKey: planKeys.stats() });
+      queryClient.invalidateQueries({ queryKey: ['plan-with-content'] });
+      queryClient.invalidateQueries({ queryKey: ['all-plans-with-content'] });
     },
   });
 };
@@ -279,6 +284,9 @@ export const useDeletePlan = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: planKeys.lists() });
       queryClient.invalidateQueries({ queryKey: planKeys.stats() });
+      // Invalider aussi les queries avec contenu (modules/catégories)
+      queryClient.invalidateQueries({ queryKey: ['plan-with-content'] });
+      queryClient.invalidateQueries({ queryKey: ['all-plans-with-content'] });
     },
   });
 };

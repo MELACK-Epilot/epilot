@@ -7,18 +7,20 @@ import { queryClient } from '@/lib/react-query';
 import { validateEnv, logEnvInfo } from '@/lib/validateEnv';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PermissionsProvider } from '@/providers/PermissionsProvider';
+import { AccessProfilesProvider } from '@/providers/AccessProfilesProvider';
+import { RealtimePlanProvider } from '@/providers/RealtimePlanProvider';
 
 // Import direct pour éviter les délais de lazy loading
 import LoginPage from './features/auth/pages/LoginPage';
 import { LogoutHandler } from './features/auth/components/LogoutHandler';
-import DashboardLayout from './features/dashboard/components/DashboardLayout';
+import DashboardLayoutModern from './features/dashboard/components/DashboardLayoutModern';
 import DashboardOverview from './features/dashboard/pages/DashboardOverview';
 import SchoolGroups from './features/dashboard/pages/SchoolGroups';
 import Schools from './features/dashboard/pages/Schools';
 import FinancesGroupe from './features/dashboard/pages/FinancesGroupe';
 import Users from './features/dashboard/pages/Users';
 import Categories from './features/dashboard/pages/Categories';
-import Plans from './features/dashboard/pages/Plans';
+import Plans from './features/dashboard/pages/PlansUltimate';
 import Modules from './features/dashboard/pages/Modules';
 import Subscriptions from './features/dashboard/pages/Subscriptions';
 import FinancesDashboard from './features/dashboard/pages/FinancesDashboard';
@@ -28,15 +30,16 @@ import Communication from './features/dashboard/pages/Communication';
 import Reports from './features/dashboard/pages/Reports';
 import ActivityLogs from './features/dashboard/pages/ActivityLogs';
 import Trash from './features/dashboard/pages/Trash';
-import Profile from './features/dashboard/pages/Profile';
+// import Profile from './features/dashboard/pages/Profile'; // ❌ Supprimé - On utilise le modal UserProfileDialog
 import MyGroupModules from './features/dashboard/pages/MyGroupModules';
 import AssignModules from './features/dashboard/pages/AssignModules';
+import PermissionsModulesPage from './features/dashboard/pages/PermissionsModulesPage';
 import PlanChangeRequests from './features/dashboard/pages/PlanChangeRequests';
 import FinancesEcole from './features/dashboard/pages/FinancesEcole';
 import FinancesNiveau from './features/dashboard/pages/FinancesNiveau';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { RoleBasedRedirect } from './components/RoleBasedRedirect';
-import { USER_ROLES, ADMIN_ROLES } from './config/roles';
+import { USER_ROLES } from './config/roles';
 
 // Module Inscriptions
 import { InscriptionsModule } from './features/modules/inscriptions';
@@ -78,16 +81,6 @@ import { AdvancedStatsPage } from './features/user-space/pages/AdvancedStatsPage
 import { ProtectedModuleRoute } from './components/ProtectedModuleRoute';
 import { UserPermissionsProvider } from './contexts/UserPermissionsProvider';
 
-// Composant de chargement
-const LoadingSpinner = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-50">
-    <div className="text-center">
-      <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#2A9D8F] mx-auto mb-4"></div>
-      <p className="text-gray-600 font-medium">Chargement...</p>
-    </div>
-  </div>
-);
-
 function App() {
   // Valider les variables d'environnement au démarrage
   useEffect(() => {
@@ -103,12 +96,14 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <PermissionsProvider>
-          {/* ⭐ Synchronisation Temps Réel des Modules */}
-          <ModulesSync />
-          
-          <BrowserRouter>
-          <RoleBasedRedirect>
+        <RealtimePlanProvider>
+          <AccessProfilesProvider>
+            <PermissionsProvider>
+              {/* ⭐ Synchronisation Temps Réel des Modules */}
+              <ModulesSync />
+            
+            <BrowserRouter>
+            <RoleBasedRedirect>
           <Routes>
           {/* Route de connexion */}
           <Route path="/login" element={<LoginPage />} />
@@ -119,7 +114,7 @@ function App() {
           {/* Routes du dashboard */}
           <Route path="/dashboard" element={
             <ProtectedRoute>
-              <DashboardLayout />
+              <DashboardLayoutModern />
             </ProtectedRoute>
           }>
             <Route index element={<DashboardOverview />} />
@@ -199,6 +194,12 @@ function App() {
               </ProtectedRoute>
             } />
             
+            <Route path="permissions-modules" element={
+              <ProtectedRoute roles={['admin_groupe']}>
+                <PermissionsModulesPage />
+              </ProtectedRoute>
+            } />
+            
             <Route path="modules" element={
               <ProtectedRoute roles={['super_admin', 'admin_groupe']}>
                 <Modules />
@@ -252,7 +253,8 @@ function App() {
                 <Trash />
               </ProtectedRoute>
             } />
-            <Route path="profile" element={<Profile />} />
+            {/* <Route path="profile" element={<Profile />} /> */}
+            {/* ❌ Route supprimée - On utilise le modal "Mon Profil Personnel" dans le header */}
           </Route>
           
           {/* Routes Espace Utilisateur École - Tous les rôles utilisateur + admin_groupe */}
@@ -387,7 +389,9 @@ function App() {
           <Toaster />
           </RoleBasedRedirect>
           </BrowserRouter>
-        </PermissionsProvider>
+            </PermissionsProvider>
+          </AccessProfilesProvider>
+        </RealtimePlanProvider>
         
         {/* React Query DevTools (dev only) */}
         <ReactQueryDevtools initialIsOpen={false} />

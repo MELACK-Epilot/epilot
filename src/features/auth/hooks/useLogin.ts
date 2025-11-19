@@ -99,6 +99,9 @@ export const useLogin = () => {
         lastName: profile.last_name || '',
         role: profile.role, // ✅ Utiliser le rôle directement depuis la BDD
         avatar: profile.avatar || undefined,
+        gender: profile.gender || undefined,
+        dateOfBirth: profile.date_of_birth || undefined,
+        phone: profile.phone || undefined,
         schoolGroupId: profile.school_group_id || undefined,
         schoolGroupName: schoolGroup?.name || undefined,
         schoolGroupLogo: schoolGroup?.logo || undefined,

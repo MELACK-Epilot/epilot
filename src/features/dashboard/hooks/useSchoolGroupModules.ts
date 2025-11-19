@@ -45,19 +45,23 @@ export const useSchoolGroupModules = (schoolGroupId?: string) => {
       console.log('🔍 Chargement des modules pour le groupe:', schoolGroupId);
 
       // 1. Récupérer le groupe scolaire avec son plan DYNAMIQUE depuis subscription
+      // ✅ OPTIMISÉ: Tout vient de subscriptions (plus de colonne statique)
       const { data: schoolGroup, error: groupError } = await supabase
         .from('school_groups')
         .select(`
           id,
           name,
-          plan,
           subscriptions!inner(
             plan_id,
             status,
             subscription_plans!inner(
               id,
               name,
-              slug
+              slug,
+              max_schools,
+              max_students,
+              max_staff,
+              max_storage
             )
           )
         `)
@@ -74,17 +78,25 @@ export const useSchoolGroupModules = (schoolGroupId?: string) => {
         throw new Error('School group not found');
       }
 
-      // ✅ Utiliser le plan DYNAMIQUE depuis la subscription active
-      const activePlan = (schoolGroup as any).subscriptions?.[0]?.subscription_plans?.slug || schoolGroup.plan;
-      const planName = (schoolGroup as any).subscriptions?.[0]?.subscription_plans?.name || schoolGroup.plan;
+      // ✅ OPTIMISÉ: Récupérer le plan UNIQUEMENT depuis la subscription
+      const subscription = (schoolGroup as any).subscriptions?.[0];
+      const plan = subscription?.subscription_plans;
+      
+      if (!plan) {
+        throw new Error('Aucun plan trouvé dans la subscription');
+      }
 
       console.log('✅ Groupe trouvé:', schoolGroup.name);
-      console.log('📋 Plan statique (school_groups.plan):', schoolGroup.plan);
-      console.log('📋 Plan dynamique (subscription active):', activePlan);
-      console.log('📋 Nom du plan:', planName);
+      console.log('📋 Plan:', plan.name, '(' + plan.slug + ')');
+      console.log('📋 Limites:', {
+        écoles: plan.max_schools,
+        élèves: plan.max_students,
+        personnel: plan.max_staff,
+        stockage: plan.max_storage
+      });
 
-      // 2. Récupérer le plan_id depuis la subscription active
-      const planId = (schoolGroup as any).subscriptions?.[0]?.plan_id;
+      // 2. Récupérer le plan_id depuis la subscription
+      const planId = subscription.plan_id;
       
       if (!planId) {
         console.warn('⚠️ Aucun plan_id trouvé dans la subscription');
@@ -149,7 +161,7 @@ export const useSchoolGroupModules = (schoolGroupId?: string) => {
           availableModules: [],
           totalModules: 0,
           error: 'NO_MODULES_ASSIGNED',
-          message: `Le plan "${planName}" n'a aucun module assigné`,
+          message: `Le plan "${plan.name}" n'a aucun module assigné`,
         };
       }
 
@@ -160,7 +172,8 @@ export const useSchoolGroupModules = (schoolGroupId?: string) => {
       };
     },
     enabled: !!schoolGroupId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // ✅ CORRECTION: Pas de cache pour forcer le rechargement
+    gcTime: 0, // ✅ Pas de cache en mémoire
   });
 };
 
@@ -176,12 +189,12 @@ export const useSchoolGroupCategories = (schoolGroupId?: string) => {
       }
 
       // 1. Récupérer le groupe scolaire avec son plan DYNAMIQUE depuis subscription
+      // ✅ OPTIMISÉ: Tout vient de subscriptions (plus de colonne statique)
       const { data: schoolGroup, error: groupError } = await supabase
         .from('school_groups')
         .select(`
           id,
           name,
-          plan,
           subscriptions!inner(
             plan_id,
             status,
@@ -199,8 +212,9 @@ export const useSchoolGroupCategories = (schoolGroupId?: string) => {
       if (groupError) throw groupError;
       if (!schoolGroup) throw new Error('School group not found');
 
-      // 2. Récupérer le plan_id depuis la subscription active
-      const planId = (schoolGroup as any).subscriptions?.[0]?.plan_id;
+      // 2. Récupérer le plan_id depuis la subscription
+      const subscription = (schoolGroup as any).subscriptions?.[0];
+      const planId = subscription?.plan_id;
       
       if (!planId) {
         console.warn('⚠️ Aucun plan_id trouvé dans la subscription');
@@ -287,7 +301,8 @@ export const useSchoolGroupCategories = (schoolGroupId?: string) => {
       };
     },
     enabled: !!schoolGroupId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // ✅ CORRECTION: Pas de cache pour forcer le rechargement
+    gcTime: 0, // ✅ Pas de cache en mémoire
   });
 };
 

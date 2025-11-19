@@ -28,24 +28,63 @@ export interface AssignedModule {
 }
 
 /**
- * Hook pour récupérer les modules assignés à un utilisateur
+ * Hook pour récupérer les modules assignés à un utilisateur (via RPC optimisée)
  */
 export const useUserAssignedModules = (userId?: string) => {
   return useQuery({
     queryKey: ['user-assigned-modules', userId],
     queryFn: async () => {
-      if (!userId) throw new Error('User ID required');
+      if (!userId) {
+        console.warn('⚠️ useUserAssignedModules: userId manquant');
+        return [];
+      }
 
-      const { data, error } = await supabase
-        .from('user_module_permissions')
-        .select('*')
-        .eq('user_id', userId);
+      console.log('🔍 Récupération modules assignés pour user:', userId);
 
-      if (error) throw error;
-      return (data || []) as AssignedModule[];
+      const { data, error } = await (supabase as any).rpc('get_user_assigned_modules', {
+        p_user_id: userId
+      });
+
+      if (error) {
+        console.error('❌ Erreur récupération modules assignés:', error);
+        throw error;
+      }
+
+      console.log('✅ Modules assignés récupérés:', data?.length || 0);
+
+      // Transformer les données pour correspondre à l'interface AssignedModule
+      const transformedData = (data || []).map((item: any) => ({
+        id: `${item.user_id}-${item.module_id}`, // Clé composite comme ID
+        user_id: item.user_id,
+        module_id: item.module_id,
+        can_read: item.can_read,
+        can_write: item.can_write,
+        can_delete: item.can_delete,
+        can_export: item.can_export,
+        assigned_at: item.assigned_at,
+        assigned_by: item.assigned_by,
+        is_active: true, // Toujours true car la query filtre déjà
+        module: {
+          id: item.module_id,
+          name: item.module_name,
+          description: item.module_description,
+          icon: item.module_icon,
+          slug: item.module_slug,
+          category: item.category_id ? {
+            id: item.category_id,
+            name: item.category_name,
+            color: item.category_color,
+            icon: item.category_icon,
+          } : null,
+        },
+      }));
+
+      return transformedData as AssignedModule[];
     },
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 1000, // 30 secondes (plus court pour voir les changements rapidement)
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 };
 

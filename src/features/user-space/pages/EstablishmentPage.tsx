@@ -428,71 +428,8 @@ export const EstablishmentPage = memo(() => {
                 </div>
               </button>
 
-              {/* Hub Documentaire */}
-              <button 
-                onClick={() => setShowDocumentHub(true)}
-                aria-label="Accéder au hub documentaire du groupe scolaire"
-                className="group relative p-6 bg-gradient-to-br from-cyan-50 to-cyan-100 hover:from-cyan-100 hover:to-cyan-200 rounded-2xl border-2 border-cyan-200 hover:border-cyan-400 transition-all duration-300 text-left hover:shadow-lg"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-xl bg-cyan-500 group-hover:scale-110 transition-transform">
-                    <FileText className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
-                      Hub Documentaire
-                      <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-cyan-600 group-hover:translate-x-1 transition-all" />
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Partager et consulter les documents du groupe
-                    </p>
-                  </div>
-                </div>
-              </button>
-
-              {/* Communiquer avec Autres Écoles */}
-              <button 
-                onClick={handleSchoolNetwork}
-                aria-label="Accéder au réseau des écoles et échanger avec les collègues"
-                className="group relative p-6 bg-gradient-to-br from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 rounded-2xl border-2 border-orange-200 hover:border-orange-400 transition-all duration-300 text-left hover:shadow-lg"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-xl bg-orange-500 group-hover:scale-110 transition-transform">
-                    <Users className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
-                      Réseau des Écoles
-                      <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-orange-600 group-hover:translate-x-1 transition-all" />
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Échanger avec les autres établissements du groupe
-                    </p>
-                  </div>
-                </div>
-              </button>
-
-              {/* Demande de Réunion */}
-              <button 
-                onClick={handleMeetingRequest}
-                aria-label="Planifier une réunion avec l'admin ou d'autres directeurs"
-                className="group relative p-6 bg-gradient-to-br from-pink-50 to-pink-100 hover:from-pink-100 hover:to-pink-200 rounded-2xl border-2 border-pink-200 hover:border-pink-400 transition-all duration-300 text-left"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-xl bg-pink-500 group-hover:scale-110 transition-transform">
-                    <Calendar className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
-                      Demande de Réunion
-                      <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-pink-600 group-hover:translate-x-1 transition-all" />
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Planifier une réunion avec l'admin ou d'autres directeurs
-                    </p>
-                  </div>
-                </div>
-              </button>
+              {/* TODO: Actions désactivées - seront intégrées comme modules */}
+              {/* Hub Documentaire, Réseau des Écoles, Demande de Réunion */}
 
               {/* Partage de Bonnes Pratiques */}
               <button 

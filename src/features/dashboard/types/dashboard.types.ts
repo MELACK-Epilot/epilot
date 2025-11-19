@@ -163,6 +163,7 @@ export interface User {
   phone?: string;
   avatar?: string; // URL Supabase Storage (source de vérité unique)
   role: UserRole;
+  accessProfileCode?: string; // Profil d'accès (NULL pour admins)
   schoolGroupId?: string; // OBLIGATOIRE si role='admin_groupe'
   schoolGroupName?: string;
   schoolId?: string;
