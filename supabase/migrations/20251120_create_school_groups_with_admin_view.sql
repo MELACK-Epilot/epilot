@@ -23,7 +23,10 @@ SELECT
   sg.founded_year,
   sg.description,
   sg.logo,
-  sg.plan,
+  
+  -- Plan DYNAMIQUE depuis la subscription active (au lieu de sg.plan statique)
+  COALESCE(sp.slug, sg.plan, 'gratuit') AS plan,
+  
   sg.status,
   sg.school_count,
   sg.student_count,
@@ -46,6 +49,12 @@ LEFT JOIN users u ON (
   u.school_group_id = sg.id 
   AND u.role = 'admin_groupe'
 )
+-- LEFT JOIN pour récupérer le plan depuis la subscription active
+LEFT JOIN subscriptions s ON (
+  s.school_group_id = sg.id 
+  AND s.status = 'active'
+)
+LEFT JOIN subscription_plans sp ON sp.id = s.plan_id
 
 -- Ordonner par date de création (plus récents en premier)
 ORDER BY sg.created_at DESC;

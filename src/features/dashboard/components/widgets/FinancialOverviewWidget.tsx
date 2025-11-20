@@ -4,9 +4,10 @@
  */
 
 import { useState } from 'react';
-import { TrendingUp, Calendar, Download, ChevronDown } from 'lucide-react';
+import { TrendingUp, Calendar, Download, ChevronDown, AlertCircle, RefreshCw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useMonthlyRevenue } from '../../hooks/useMonthlyRevenue';
 
 // Périodes disponibles
@@ -25,7 +26,7 @@ const FinancialOverviewWidget = () => {
   
   // Utiliser les données réelles depuis le hook
   const months = period === '6months' ? 6 : 12;
-  const { data: revenueData, isLoading } = useMonthlyRevenue(months);
+  const { data: revenueData, isLoading, isError, error, refetch } = useMonthlyRevenue(months);
   
   const data = revenueData?.data || [];
   const totalRevenue = revenueData?.totalRevenue || 0;
@@ -36,6 +37,10 @@ const FinancialOverviewWidget = () => {
   const handleExport = () => {
     // TODO: Implémenter export CSV/Excel
     console.log('Export des données financières');
+  };
+
+  const handleRefresh = async () => {
+    await refetch();
   };
 
   return (
@@ -97,46 +102,88 @@ const FinancialOverviewWidget = () => {
         </div>
       </div>
       
+      {/* ✅ CORRECTION: Affichage des erreurs */}
+      {isError && (
+        <div className="relative mb-3">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Erreur de chargement</AlertTitle>
+            <AlertDescription className="space-y-2">
+              <p>Impossible de charger les revenus mensuels.</p>
+              {error instanceof Error && (
+                <p className="text-xs">Détails: {error.message}</p>
+              )}
+              <div className="flex gap-2 mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleRefresh}
+                  className="h-7 text-xs"
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Réessayer
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      {/* Loading state */}
+      {isLoading && !isError && (
+        <div className="relative mb-3">
+          <div className="animate-pulse space-y-3">
+            <div className="h-16 bg-gray-200 rounded" />
+            <div className="h-48 bg-gray-200 rounded" />
+          </div>
+        </div>
+      )}
+
       {/* Stats résumé */}
-      <div className="relative grid grid-cols-3 gap-2 mb-3">
-        <div className="text-center p-2 bg-[#2A9D8F]/5 rounded">
-          <p className="text-xs text-gray-500">Revenus</p>
-          <p className="text-sm font-semibold text-[#1D3557]">{(totalRevenue / 1000000).toFixed(1)}M</p>
+      {!isError && !isLoading && (
+        <div className="relative grid grid-cols-3 gap-2 mb-3">
+          <div className="text-center p-2 bg-[#2A9D8F]/5 rounded">
+            <p className="text-xs text-gray-500">Revenus</p>
+            <p className="text-sm font-semibold text-[#1D3557]">{(totalRevenue / 1000000).toFixed(1)}M</p>
+          </div>
+          <div className="text-center p-2 bg-[#E63946]/5 rounded">
+            <p className="text-xs text-gray-500">Dépenses</p>
+            <p className="text-sm font-semibold text-[#1D3557]">{(totalExpenses / 1000000).toFixed(1)}M</p>
+          </div>
+          <div className="text-center p-2 bg-[#E9C46A]/5 rounded">
+            <p className="text-xs text-gray-500">Profit</p>
+            <p className="text-sm font-semibold text-[#1D3557]">{(totalProfit / 1000000).toFixed(1)}M</p>
+          </div>
         </div>
-        <div className="text-center p-2 bg-[#E63946]/5 rounded">
-          <p className="text-xs text-gray-500">Dépenses</p>
-          <p className="text-sm font-semibold text-[#1D3557]">{(totalExpenses / 1000000).toFixed(1)}M</p>
-        </div>
-        <div className="text-center p-2 bg-[#E9C46A]/5 rounded">
-          <p className="text-xs text-gray-500">Profit</p>
-          <p className="text-sm font-semibold text-[#1D3557]">{(totalProfit / 1000000).toFixed(1)}M</p>
-        </div>
-      </div>
-      
+      )}
+
       {/* Filtres d'affichage */}
-      <div className="relative flex items-center gap-2 mb-2">
-        <button
-          onClick={() => setShowExpenses(!showExpenses)}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
-            showExpenses ? 'bg-[#E63946]/10 text-[#E63946]' : 'bg-gray-100 text-gray-600'
-          }`}
-        >
-          <div className="w-2 h-2 rounded-sm bg-[#E63946]" />
-          Dépenses
-        </button>
-        <button
-          onClick={() => setShowProfit(!showProfit)}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
-            showProfit ? 'bg-[#E9C46A]/10 text-[#E9C46A]' : 'bg-gray-100 text-gray-600'
-          }`}
-        >
-          <div className="w-2 h-2 rounded-sm bg-[#E9C46A]" />
-          Profit
-        </button>
-      </div>
+      {!isError && !isLoading && (
+        <div className="relative flex items-center gap-2 mb-2">
+          <button
+            onClick={() => setShowExpenses(!showExpenses)}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
+              showExpenses ? 'bg-[#E63946]/10 text-[#E63946]' : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            <div className="w-2 h-2 rounded-sm bg-[#E63946]" />
+            Dépenses
+          </button>
+          <button
+            onClick={() => setShowProfit(!showProfit)}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
+              showProfit ? 'bg-[#E9C46A]/10 text-[#E9C46A]' : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            <div className="w-2 h-2 rounded-sm bg-[#E9C46A]" />
+            Profit
+          </button>
+        </div>
+      )}
 
       {/* Graphique */}
-      <div className="relative h-48">
+      {!isError && !isLoading && (
+        <div className="relative h-48">
         <ResponsiveContainer width="100%" height="100%" minWidth={300} minHeight={192}>
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -185,24 +232,27 @@ const FinancialOverviewWidget = () => {
             )}
           </BarChart>
         </ResponsiveContainer>
-      </div>
+        </div>
+      )}
 
       {/* Footer avec taux d'atteinte */}
-      <div className="relative mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-        <div className="flex items-center gap-3 text-xs">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-sm bg-[#2A9D8F]" />
-            <span className="text-gray-500">Objectif atteint</span>
+      {!isError && !isLoading && (
+        <div className="relative mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-3 text-xs">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-sm bg-[#2A9D8F]" />
+              <span className="text-gray-500">Objectif atteint</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-sm bg-[#E9C46A]" />
+              <span className="text-gray-500">En dessous</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-sm bg-[#E9C46A]" />
-            <span className="text-gray-500">En dessous</span>
+          <div className="px-2 py-1 bg-[#2A9D8F]/10 rounded">
+            <span className="text-xs font-semibold text-[#2A9D8F]">{achievement}% atteint</span>
           </div>
         </div>
-        <div className="px-2 py-1 bg-[#2A9D8F]/10 rounded">
-          <span className="text-xs font-semibold text-[#2A9D8F]">{achievement}% atteint</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

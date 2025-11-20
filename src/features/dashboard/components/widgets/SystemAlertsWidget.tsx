@@ -3,27 +3,52 @@
  * @module SystemAlertsWidget
  */
 
-import { useState, useEffect } from 'react';
-import { AlertTriangle, X, CheckCircle2, Search, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, X, CheckCircle2, Search, RefreshCw, Eye, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSystemAlerts, useMarkAlertAsRead, useResolveAlert } from '../../hooks/useSystemAlerts';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 const SystemAlertsWidget = () => {
+  const navigate = useNavigate();
   const { data: alertsData = [], isLoading, refetch } = useSystemAlerts({ isRead: false });
   const markAsRead = useMarkAlertAsRead();
   const resolveAlert = useResolveAlert();
   
   const [filter, setFilter] = useState<'all' | 'critical' | 'error' | 'warning'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showAll, setShowAll] = useState(false);
+  
+  const ALERTS_LIMIT = 5;
 
-  const handleMarkAsHandled = async (id: string) => {
+  const handleMarkAsRead = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await markAsRead.mutateAsync(id);
+      toast.success('Alerte marquée comme lue');
+    } catch (error) {
+      console.error('Erreur:', error);
+      toast.error('Erreur lors du marquage');
+    }
+  };
+
+  const handleMarkAsHandled = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     try {
       await resolveAlert.mutateAsync(id);
       toast.success('Alerte résolue');
     } catch (error) {
       console.error('Erreur lors de la résolution de l\'alerte:', error);
       toast.error('Erreur lors de la résolution');
+    }
+  };
+
+  const handleAlertClick = (alert: any) => {
+    if (alert.action_url) {
+      navigate(alert.action_url);
     }
   };
 
@@ -36,7 +61,9 @@ const SystemAlertsWidget = () => {
       a.message.toLowerCase().includes(searchTerm.toLowerCase())
     );
   
-  const activeAlerts = filteredAlerts;
+  // Pagination: limiter à 5 alertes par défaut
+  const activeAlerts = showAll ? filteredAlerts : filteredAlerts.slice(0, ALERTS_LIMIT);
+  const hasMore = filteredAlerts.length > ALERTS_LIMIT;
   const criticalCount = (alertsData as any[]).filter(a => a.severity === 'critical').length;
   const errorCount = (alertsData as any[]).filter(a => a.severity === 'error').length;
   const warningCount = (alertsData as any[]).filter(a => a.severity === 'warning').length;
@@ -152,7 +179,9 @@ const SystemAlertsWidget = () => {
           {activeAlerts.map((alert: any) => (
             <div
               key={alert.id}
-              className={`p-3 rounded border-l-2 transition-all hover:shadow-sm ${
+              className={`p-3 rounded border-l-2 transition-all hover:shadow-md ${
+                alert.action_url ? 'cursor-pointer' : ''
+              } ${
                 alert.severity === 'critical'
                   ? 'bg-red-50 border-red-600'
                   : alert.severity === 'error'
@@ -161,34 +190,110 @@ const SystemAlertsWidget = () => {
                   ? 'bg-yellow-50 border-yellow-500'
                   : 'bg-blue-50 border-blue-500'
               }`}
+              onClick={() => handleAlertClick(alert)}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <h4 className="text-xs font-medium text-gray-900">{alert.title}</h4>
+                    
+                    {alert.category && (
+                      <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                        {alert.category}
+                      </span>
+                    )}
+                    
                     {alert.severity === 'critical' && (
                       <span className="px-1.5 py-0.5 bg-red-600 text-white text-[10px] font-bold rounded uppercase">
                         Critique
                       </span>
                     )}
                   </div>
+                  
                   <p className="text-xs text-gray-600 mt-0.5">{alert.message}</p>
-                  {alert.entity_name && (
-                    <p className="text-[10px] text-gray-500 mt-1">
-                      {alert.entity_type}: {alert.entity_name}
-                    </p>
+                  
+                  <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                    {alert.entity_name && (
+                      <p className="text-[10px] text-gray-500">
+                        {alert.entity_type}: {alert.entity_name}
+                      </p>
+                    )}
+                    
+                    {alert.created_at && (
+                      <p className="text-[10px] text-gray-400">
+                        {formatDistanceToNow(new Date(alert.created_at), { 
+                          addSuffix: true, 
+                          locale: fr 
+                        })}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {alert.action_required && alert.action_url && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2 h-6 text-[10px] px-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(alert.action_url);
+                      }}
+                    >
+                      {alert.action_label || 'Voir détails'}
+                      <ExternalLink className="h-2.5 w-2.5 ml-1" />
+                    </Button>
                   )}
                 </div>
-                <button
-                  onClick={() => handleMarkAsHandled(alert.id)}
-                  className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
-                  title="Résoudre"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+                
+                <div className="flex gap-1 flex-shrink-0">
+                  {!alert.is_read && (
+                    <button
+                      onClick={(e) => handleMarkAsRead(alert.id, e)}
+                      className="text-gray-400 hover:text-blue-600 transition-colors"
+                      title="Marquer comme lu"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={(e) => handleMarkAsHandled(alert.id, e)}
+                    className="text-gray-400 hover:text-red-600 transition-colors"
+                    title="Résoudre et supprimer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
+          
+          {/* Bouton "Voir plus" / "Voir moins" */}
+          {hasMore && !showAll && (
+            <div className="mt-3 text-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-[#E63946] hover:text-[#E63946] hover:bg-[#E63946]/10"
+                onClick={() => setShowAll(true)}
+              >
+                Voir {filteredAlerts.length - ALERTS_LIMIT} alerte(s) de plus
+              </Button>
+            </div>
+          )}
+          
+          {showAll && filteredAlerts.length > ALERTS_LIMIT && (
+            <div className="mt-3 text-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-gray-600 hover:text-gray-600 hover:bg-gray-100"
+                onClick={() => setShowAll(false)}
+              >
+                Voir moins
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

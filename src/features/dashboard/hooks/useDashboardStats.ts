@@ -16,35 +16,19 @@ const fetchDashboardStats = async (userRole?: string, schoolGroupId?: string): P
     const isSuperAdmin = userRole === 'super_admin';
     const isAdminGroupe = userRole === 'admin_groupe';
     
-    // ✅ STATS ADMIN GROUPE : Écoles, Élèves, Personnel
+    // ⚠️ STATS ADMIN GROUPE : Utiliser useAdminGroupStats à la place
+    // Ce hook est principalement pour Super Admin
+    // Pour Admin Groupe, utiliser le hook dédié useAdminGroupStats
     if (isAdminGroupe && schoolGroupId) {
-      // Compter les écoles du groupe
-      const { count: totalSchools } = await supabase
-        .from('schools')
-        .select('id', { count: 'exact', head: true })
-        .eq('school_group_id', schoolGroupId);
-
-      // Récupérer les données des écoles (élèves, personnel)
-      const { data: schoolsData } = await supabase
-        .from('schools')
-        .select('student_count, staff_count')
-        .eq('school_group_id', schoolGroupId);
-
-      const totalStudents = schoolsData?.reduce((sum, s: any) => sum + (s.student_count || 0), 0) || 0;
-      const totalStaff = schoolsData?.reduce((sum, s: any) => sum + (s.staff_count || 0), 0) || 0;
-
-      // Compter les utilisateurs actifs du groupe
-      const { count: activeUsers } = await supabase
-        .from('users')
-        .select('id', { count: 'exact', head: true })
-        .eq('school_group_id', schoolGroupId)
-        .eq('status', 'active');
-
+      console.warn('⚠️ useDashboardStats appelé pour Admin Groupe. Utiliser useAdminGroupStats à la place.');
+      
+      // Retourner des valeurs par défaut
+      // Le composant devrait utiliser useAdminGroupStats
       return {
-        totalSchoolGroups: totalSchools || 0,  // Réutiliser pour écoles
-        activeUsers: activeUsers || 0,
-        estimatedMRR: totalStudents,  // Réutiliser pour élèves
-        criticalSubscriptions: totalStaff,  // Réutiliser pour personnel
+        totalSchoolGroups: 0,
+        activeUsers: 0,
+        estimatedMRR: 0,
+        criticalSubscriptions: 0,
         trends: {
           schoolGroups: 0,
           users: 0,
@@ -57,7 +41,18 @@ const fetchDashboardStats = async (userRole?: string, schoolGroupId?: string): P
     // ✅ STATS SUPER ADMIN : Groupes, Utilisateurs, MRR
     let schoolGroupsQuery = supabase.from('school_groups').select('id', { count: 'exact', head: true });
     let usersQuery = supabase.from('users').select('id', { count: 'exact', head: true }).eq('status', 'active');
-    let subscriptionsQuery = supabase.from('subscriptions').select('id, amount', { count: 'exact' }).eq('status', 'active');
+    
+    // ✅ CORRECTION: Récupérer le prix depuis subscription_plans
+    let subscriptionsQuery = supabase
+      .from('subscriptions')
+      .select(`
+        id,
+        status,
+        subscription_plans!inner(
+          price
+        )
+      `)
+      .eq('status', 'active');
     
     const [schoolGroupsResult, usersResult, subscriptionsResult] = await Promise.all([
       schoolGroupsQuery,
@@ -68,8 +63,11 @@ const fetchDashboardStats = async (userRole?: string, schoolGroupId?: string): P
     const totalSchoolGroups = schoolGroupsResult.count || 0;
     const activeUsers = usersResult.count || 0;
     
-    // Calculer MRR (Monthly Recurring Revenue)
-    const estimatedMRR = subscriptionsResult.data?.reduce((sum, sub: any) => sum + (sub.amount || 0), 0) || 0;
+    // ✅ CORRECTION: Calculer MRR depuis subscription_plans.price
+    const estimatedMRR = subscriptionsResult.data?.reduce(
+      (sum, sub: any) => sum + (sub.subscription_plans?.price || 0), 
+      0
+    ) || 0;
     
     // Abonnements critiques (expire dans moins de 7 jours)
     let criticalQuery = supabase
@@ -91,10 +89,35 @@ const fetchDashboardStats = async (userRole?: string, schoolGroupId?: string): P
     let lastMonthGroupsQuery = supabase.from('school_groups').select('id', { count: 'exact', head: true }).lt('created_at', lastMonth.toISOString());
     let lastMonthUsersQuery = supabase.from('users').select('id', { count: 'exact', head: true }).eq('status', 'active').lt('created_at', lastMonth.toISOString());
     
-    const [lastMonthGroups, lastMonthUsers] = await Promise.all([
+    // ✅ CORRECTION: Calculer MRR du mois dernier
+    let lastMonthSubscriptionsQuery = supabase
+      .from('subscriptions')
+      .select(`
+        id,
+        subscription_plans!inner(price)
+      `)
+      .eq('status', 'active')
+      .lt('created_at', lastMonth.toISOString());
+    
+    // ✅ CORRECTION: Compter les subscriptions du mois dernier
+    let lastMonthSubsCountQuery = supabase
+      .from('subscriptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'active')
+      .lt('created_at', lastMonth.toISOString());
+    
+    const [lastMonthGroups, lastMonthUsers, lastMonthSubscriptionsData, lastMonthSubsCount] = await Promise.all([
       lastMonthGroupsQuery,
       lastMonthUsersQuery,
+      lastMonthSubscriptionsQuery,
+      lastMonthSubsCountQuery,
     ]);
+
+    // ✅ CORRECTION: Calculer le MRR du mois dernier
+    const lastMonthMRR = lastMonthSubscriptionsData.data?.reduce(
+      (sum, sub: any) => sum + (sub.subscription_plans?.price || 0),
+      0
+    ) || 0;
 
     const calculateTrend = (current: number, previous: number) => {
       if (previous === 0) return 0;
@@ -109,25 +132,17 @@ const fetchDashboardStats = async (userRole?: string, schoolGroupId?: string): P
       trends: {
         schoolGroups: calculateTrend(totalSchoolGroups, lastMonthGroups.count || 0),
         users: calculateTrend(activeUsers, lastMonthUsers.count || 0),
-        mrr: 15.2, // TODO: Calculer depuis historique
-        subscriptions: -25.0, // TODO: Calculer depuis historique
+        mrr: calculateTrend(estimatedMRR, lastMonthMRR), // ✅ CORRECTION: Vraie tendance
+        subscriptions: calculateTrend(
+          subscriptionsResult.data?.length || 0,
+          lastMonthSubsCount.count || 0
+        ), // ✅ CORRECTION: Vraie tendance
       },
     };
   } catch (error) {
     console.error('Erreur lors de la récupération des stats:', error);
-    // Fallback sur données mockées
-    return {
-      totalSchoolGroups: 24,
-      activeUsers: 1847,
-      estimatedMRR: 12500000,
-      criticalSubscriptions: 3,
-      trends: {
-        schoolGroups: 12.5,
-        users: 8.3,
-        mrr: 15.2,
-        subscriptions: -25.0,
-      },
-    };
+    // ✅ CORRECTION: Laisser React Query gérer l'erreur au lieu de retourner des données mockées
+    throw error;
   }
 };
 

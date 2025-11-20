@@ -357,6 +357,7 @@ export const useUpdateSchoolGroup = () => {
       if (updates.staffCount !== undefined) updateData.staff_count = updates.staffCount;
       if (updates.status !== undefined) updateData.status = updates.status;
 
+      // 1. Mettre à jour le groupe scolaire
       const { data, error } = await schoolGroupsTable()
         .update(updateData)
         .eq('id', id)
@@ -368,12 +369,77 @@ export const useUpdateSchoolGroup = () => {
         throw new Error(error.message || 'Erreur lors de la mise à jour du groupe scolaire');
       }
 
+      // 2. Si le plan a changé, mettre à jour la subscription
+      if (updates.plan !== undefined) {
+        console.log('🔄 Mise à jour du plan:', updates.plan);
+        
+        // Récupérer l'ID du nouveau plan
+        const { data: newPlan, error: planError } = await supabase
+          .from('subscription_plans')
+          .select('id')
+          .eq('slug', updates.plan)
+          .single();
+
+        if (planError) {
+          console.error('❌ Erreur récupération plan:', planError);
+        } else if (newPlan) {
+          console.log('✅ Plan trouvé:', newPlan.id);
+          
+          // Vérifier si une subscription active existe
+          const { data: existingSub } = await supabase
+            .from('subscriptions')
+            .select('id')
+            .eq('school_group_id', id)
+            .eq('status', 'active')
+            .single();
+
+          if (existingSub) {
+            // Mettre à jour la subscription existante
+            const { error: subError } = await supabase
+              .from('subscriptions')
+              .update({ 
+                plan_id: newPlan.id,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', existingSub.id);
+
+            if (subError) {
+              console.error('❌ Erreur mise à jour subscription:', subError);
+            } else {
+              console.log('✅ Subscription mise à jour');
+            }
+          } else {
+            // Créer une nouvelle subscription
+            const { error: createError } = await supabase
+              .from('subscriptions')
+              .insert({
+                school_group_id: id,
+                plan_id: newPlan.id,
+                status: 'active',
+                start_date: new Date().toISOString(),
+                end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // +1 an
+                auto_renew: true,
+              });
+
+            if (createError) {
+              console.error('❌ Erreur création subscription:', createError);
+            } else {
+              console.log('✅ Subscription créée');
+            }
+          }
+        }
+      }
+
       return data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: schoolGroupKeys.lists() });
       queryClient.invalidateQueries({ queryKey: schoolGroupKeys.detail(variables.id) });
       queryClient.invalidateQueries({ queryKey: schoolGroupKeys.stats() });
+      // Invalider aussi les queries de plans et subscriptions
+      queryClient.invalidateQueries({ queryKey: ['plans'] });
+      queryClient.invalidateQueries({ queryKey: ['plan-subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['all-active-subscriptions'] });
     },
   });
 };

@@ -346,33 +346,45 @@ export const usePlanStats = () => {
   return useQuery({
     queryKey: planKeys.stats(),
     queryFn: async () => {
-      // Utiliser la vue SQL plan_stats
-      const { data, error } = await supabase
-        .from('plan_stats')
-        .select('*');
+      // Récupérer les statistiques globales depuis la vue
+      const { data: globalStats, error: globalError } = await supabase
+        .from('plan_global_stats')
+        .select('*')
+        .single();
 
-      if (error) {
-        console.warn('Vue plan_stats non disponible, calcul manuel');
-        // Fallback si la vue n'existe pas encore
-        const { count: total } = await supabase
-          .from('plans')
-          .select('*', { count: 'exact', head: true });
+      if (globalError) {
+        console.warn('Vue plan_global_stats non disponible, calcul manuel');
+        
+        // Fallback: Calcul manuel si la vue n'existe pas
+        const { data: plans } = await supabase
+          .from('subscription_plans')
+          .select('id, is_active');
+        
+        const { data: subscriptions } = await supabase
+          .from('subscriptions')
+          .select('id, status, price, plan_id');
 
+        const activeSubscriptions = subscriptions?.filter(s => s.status === 'active') || [];
+        
         return {
-          total: total || 0,
-          active: 0,
-          subscriptions: 0,
-          planBreakdown: [],
+          total: plans?.length || 0,
+          active: plans?.filter(p => p.is_active).length || 0,
+          subscriptions: activeSubscriptions.length,
+          mrr: activeSubscriptions.reduce((sum, s) => sum + (s.price || 0), 0),
+          arr: activeSubscriptions.reduce((sum, s) => sum + (s.price || 0), 0) * 12,
         };
       }
 
+      // Retourner les stats depuis la vue
       return {
-        total: data?.length || 0,
-        active: data?.filter((p: any) => p.subscription_count > 0).length || 0,
-        subscriptions: data?.reduce((acc: number, p: any) => acc + (p.subscription_count || 0), 0) || 0,
-        planBreakdown: data || [],
+        total: globalStats.total_plans || 0,
+        active: globalStats.active_plans || 0,
+        subscriptions: globalStats.total_active_subscriptions || 0,
+        mrr: globalStats.total_mrr || 0,
+        arr: globalStats.total_arr || 0,
       };
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000, // 30 secondes (stats changent fréquemment)
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 };

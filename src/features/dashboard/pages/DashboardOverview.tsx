@@ -6,11 +6,12 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Home, ChevronRight, RefreshCw, Download, Zap, TrendingUp, AlertCircle, Sparkles, School, Users as UsersIcon, Package } from 'lucide-react';
+import { Home, ChevronRight, RefreshCw, Download, Zap, TrendingUp, AlertCircle, Sparkles, School, Users as UsersIcon, Package, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { WelcomeCard } from '../components/WelcomeCard';
 import { StatsWidget } from '../components/StatsWidget';
 import { DashboardGrid } from '../components/DashboardGrid';
@@ -34,7 +35,7 @@ export const DashboardOverview = () => {
   
   // Pour Super Admin, continuer avec le dashboard classique
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { data: stats, refetch } = useDashboardStats();
+  const { data: stats, refetch, isError, error } = useDashboardStats();
   const { data: insights, isLoading: insightsLoading } = useAIInsights();
   const navigate = useNavigate();
   
@@ -86,6 +87,31 @@ export const DashboardOverview = () => {
           <ChevronRight className="w-4 h-4" />
           <span className="font-medium text-gray-900">Tableau de bord</span>
         </motion.nav>
+
+        {/* ✅ CORRECTION: Affichage des erreurs */}
+        {isError && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Alert variant="destructive">
+              <XCircle className="h-4 w-4" />
+              <AlertTitle>Erreur de chargement</AlertTitle>
+              <AlertDescription>
+                Impossible de charger les statistiques du dashboard. 
+                {error instanceof Error && ` Détails: ${error.message}`}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleRefresh}
+                  className="mt-2"
+                >
+                  Réessayer
+                </Button>
+              </AlertDescription>
+            </Alert>
+          </motion.div>
+        )}
 
         {/* Header Premium */}
         <motion.div

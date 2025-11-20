@@ -110,39 +110,11 @@ export const useMonthlyRevenue = (months: number = 6) => {
           achievement,
         };
       } catch (error) {
-        console.error('Erreur lors de la récupération des revenus mensuels:', error);
+        console.error('❌ Erreur lors de la récupération des revenus mensuels:', error);
         
-        // Fallback sur données mockées
-        const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
-        const data = Array.from({ length: months }, (_, i) => {
-          const date = new Date();
-          date.setMonth(date.getMonth() - months + i + 1);
-          const monthName = monthNames[date.getMonth()];
-          const baseRevenue = 10000000 + Math.random() * 4000000;
-          const expenses = baseRevenue * 0.6 + Math.random() * 2000000;
-          
-          return {
-            month: monthName,
-            revenue: Math.round(baseRevenue),
-            target: 12000000,
-            expenses: Math.round(expenses),
-            profit: Math.round(baseRevenue - expenses),
-          };
-        });
-
-        const totalRevenue = data.reduce((sum, m) => sum + m.revenue, 0);
-        const totalExpenses = data.reduce((sum, m) => sum + m.expenses, 0);
-        const totalProfit = data.reduce((sum, m) => sum + m.profit, 0);
-        const totalTarget = data.reduce((sum, m) => sum + m.target, 0);
-        const achievement = (totalRevenue / totalTarget) * 100;
-
-        return {
-          data,
-          totalRevenue,
-          totalExpenses,
-          totalProfit,
-          achievement,
-        };
+        // ✅ CORRECTION: Laisser React Query gérer l'erreur au lieu de retourner des données mockées
+        // Cela permettra d'afficher un message d'erreur clair à l'utilisateur
+        throw error;
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
