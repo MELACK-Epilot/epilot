@@ -23,7 +23,6 @@ import {
   TrendingUp,
   Shield,
   Layers,
-  TestTube2,
   DollarSign,
 } from 'lucide-react';
 import { SidebarNavItem } from './SidebarNavItem';
@@ -102,20 +101,6 @@ const NAVIGATION_ITEMS: readonly NavigationItem[] = [
     title: 'Plans & Tarification',
     icon: CreditCard,
     href: '/dashboard/plans',
-    badge: null,
-    roles: ['super_admin'],
-  },
-  {
-    title: 'Abonnements',
-    icon: Package,
-    href: '/dashboard/subscriptions',
-    badge: 3,
-    roles: ['super_admin'],
-  },
-  {
-    title: 'Environnement Sandbox',
-    icon: TestTube2,
-    href: '/dashboard/sandbox',
     badge: null,
     roles: ['super_admin'],
   },

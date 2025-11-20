@@ -13,6 +13,9 @@ export interface PlanSubscription {
   school_group_logo?: string;
   plan_id: string;
   plan_name: string;
+  plan_price?: number;
+  plan_currency?: string;
+  plan_billing_period?: string;
   status: 'active' | 'cancelled' | 'expired' | 'trial';
   start_date: string;
   end_date: string;
@@ -90,6 +93,9 @@ export const usePlanSubscriptions = (planId?: string) => {
             school_group_logo: sub.school_groups?.logo || null,
             plan_id: sub.plan_id,
             plan_name: sub.subscription_plans?.name || 'N/A',
+            plan_price: sub.subscription_plans?.price || 0,
+            plan_currency: sub.subscription_plans?.currency || 'FCFA',
+            plan_billing_period: sub.subscription_plans?.billing_period || 'monthly',
             status: sub.status,
             start_date: sub.start_date,
             end_date: sub.end_date,

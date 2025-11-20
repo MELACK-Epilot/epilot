@@ -145,18 +145,20 @@ export const usePlanForm = (
 
       // Validation : Au moins 1 catégorie et 1 module
       if (selectedCategoryIds.length === 0) {
+        setActiveTab('modules'); // Naviguer vers l'onglet Modules
         toast({
-          title: 'Erreur',
-          description: 'Sélectionnez au moins une catégorie',
+          title: 'Erreur de validation',
+          description: 'Sélectionnez au moins une catégorie dans l\'onglet "Modules & Catégories"',
           variant: 'destructive',
         });
         return;
       }
 
       if (selectedModuleIds.length === 0) {
+        setActiveTab('modules'); // Naviguer vers l'onglet Modules
         toast({
-          title: 'Erreur',
-          description: 'Sélectionnez au moins un module',
+          title: 'Erreur de validation',
+          description: 'Sélectionnez au moins un module dans l\'onglet "Modules & Catégories"',
           variant: 'destructive',
         });
         return;
@@ -262,6 +264,7 @@ export const usePlanForm = (
     selectedModuleIds,
     setSelectedModuleIds,
     validSelectedModules,
+    allAvailableModules,
     currentPlanType,
     isLoading,
     onSubmit,

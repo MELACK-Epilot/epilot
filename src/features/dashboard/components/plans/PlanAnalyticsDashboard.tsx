@@ -4,16 +4,31 @@
  * @module PlanAnalyticsDashboard
  */
 
-import { TrendingUp, DollarSign, Users, Target, PieChart } from 'lucide-react';
+import { TrendingUp, DollarSign, Users, Target, PieChart, AlertCircle, Sparkles, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useAllActiveSubscriptions } from '../../hooks/usePlanSubscriptions';
 import { useAllPlansWithContent } from '../../hooks/usePlanWithContent';
 import { usePlanAnalytics } from '../../hooks/usePlanAnalytics';
 
 export const PlanAnalyticsDashboard = () => {
-  const { data: subscriptions } = useAllActiveSubscriptions();
-  const { data: plans } = useAllPlansWithContent();
-  const { data: analytics } = usePlanAnalytics();
+  const { 
+    data: subscriptions, 
+    isLoading: isLoadingSubs,
+    error: subsError 
+  } = useAllActiveSubscriptions();
+  
+  const { 
+    data: plans, 
+    isLoading: isLoadingPlans,
+    error: plansError 
+  } = useAllPlansWithContent();
+  
+  const { 
+    data: analytics, 
+    isLoading: isLoadingAnalytics,
+    error: analyticsError 
+  } = usePlanAnalytics();
 
   // Calculer métriques
   const totalMRR = subscriptions?.reduce((sum, sub) => {
@@ -39,6 +54,36 @@ export const PlanAnalyticsDashboard = () => {
   }) || [];
 
   const arpu = subscriptions?.length ? totalMRR / subscriptions.length : 0;
+
+  // Gestion des erreurs
+  if (subsError || plansError || analyticsError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <AlertCircle className="w-12 h-12 text-red-500 mb-3" />
+        <p className="text-red-600 font-medium">Erreur de chargement des analytics</p>
+        <p className="text-sm text-gray-500 mt-1">
+          {subsError?.message || plansError?.message || analyticsError?.message || 'Une erreur est survenue'}
+        </p>
+        <Button 
+          onClick={() => window.location.reload()} 
+          className="mt-4"
+          variant="outline"
+        >
+          Réessayer
+        </Button>
+      </div>
+    );
+  }
+
+  // Gestion du loading
+  if (isLoadingSubs || isLoadingPlans || isLoadingAnalytics) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-3 text-gray-600">Chargement des analytics...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -191,6 +236,80 @@ export const PlanAnalyticsDashboard = () => {
           <div className="mt-4 text-xs text-[#E9C46A]">Average Revenue Per User</div>
         </Card>
       </div>
+
+      {/* Insights IA */}
+      {analytics?.insights && analytics.insights.length > 0 && (
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <Sparkles className="w-5 h-5 text-[#2A9D8F]" />
+            <h3 className="text-lg font-semibold text-slate-900">Insights IA</h3>
+            <span className="text-xs bg-[#2A9D8F]/10 text-[#2A9D8F] px-2 py-1 rounded-full font-medium">
+              {analytics.insights.length} recommandations
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {analytics.insights.map((insight, index) => {
+              const getIcon = () => {
+                switch (insight.type) {
+                  case 'warning': return <AlertTriangle className="w-5 h-5" />;
+                  case 'success': return <CheckCircle className="w-5 h-5" />;
+                  case 'opportunity': return <TrendingUp className="w-5 h-5" />;
+                  default: return <Info className="w-5 h-5" />;
+                }
+              };
+
+              const getStyles = () => {
+                switch (insight.type) {
+                  case 'warning': return 'bg-red-50 border-red-500 text-red-700';
+                  case 'success': return 'bg-green-50 border-green-500 text-green-700';
+                  case 'opportunity': return 'bg-blue-50 border-blue-500 text-blue-700';
+                  default: return 'bg-gray-50 border-gray-500 text-gray-700';
+                }
+              };
+
+              const getImpactBadge = () => {
+                switch (insight.impact) {
+                  case 'high': return 'bg-red-100 text-red-700';
+                  case 'medium': return 'bg-yellow-100 text-yellow-700';
+                  default: return 'bg-gray-100 text-gray-700';
+                }
+              };
+
+              return (
+                <div 
+                  key={index}
+                  className={`p-4 rounded-lg border-l-4 ${getStyles()}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="mt-0.5">
+                        {getIcon()}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm mb-1">{insight.title}</h4>
+                        <p className="text-xs text-gray-600 mb-2">{insight.description}</p>
+                        {insight.recommendation && (
+                          <div className="flex items-start gap-2 mt-2 p-2 bg-white/50 rounded">
+                            <Sparkles className="w-3 h-3 text-[#2A9D8F] mt-0.5 shrink-0" />
+                            <p className="text-xs text-[#2A9D8F] font-medium">
+                              {insight.recommendation}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded font-medium shrink-0 ${getImpactBadge()}`}>
+                      {insight.impact === 'high' ? 'Impact élevé' : 
+                       insight.impact === 'medium' ? 'Impact moyen' : 'Impact faible'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
     </div>
   );
 };

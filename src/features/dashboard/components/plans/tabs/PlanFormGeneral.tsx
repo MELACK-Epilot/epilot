@@ -9,14 +9,23 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FeaturesAutoGenerator } from '../FeaturesAutoGenerator';
 import type { PlanFormTabProps } from '../PlanForm.types';
 import type { SubscriptionPlan } from '../../../types/dashboard.types';
 
 interface PlanFormGeneralProps extends PlanFormTabProps {
   onNameChange: (name: string) => void;
+  selectedModuleIds: string[];
+  allAvailableModules: any[];
 }
 
-export const PlanFormGeneral = ({ form, mode, onNameChange }: PlanFormGeneralProps) => {
+export const PlanFormGeneral = ({ 
+  form, 
+  mode, 
+  onNameChange, 
+  selectedModuleIds, 
+  allAvailableModules 
+}: PlanFormGeneralProps) => {
   return (
     <div className="space-y-6">
       {/* Informations de base */}
@@ -102,20 +111,15 @@ export const PlanFormGeneral = ({ form, mode, onNameChange }: PlanFormGeneralPro
       {/* Fonctionnalités */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900">Fonctionnalités incluses</h3>
-        <div className="space-y-2">
-          <Label htmlFor="features">Liste des fonctionnalités (une par ligne) *</Label>
-          <Textarea
-            id="features"
-            {...form.register('features')}
-            placeholder="Gestion des élèves&#10;Gestion du personnel&#10;Rapports avancés&#10;..."
-            rows={6}
-            className={form.formState.errors.features ? 'border-red-500' : ''}
-          />
-          {form.formState.errors.features && (
-            <p className="text-sm text-red-500">{form.formState.errors.features.message}</p>
-          )}
-          <p className="text-xs text-gray-500">Séparez chaque fonctionnalité par un retour à la ligne</p>
-        </div>
+        <FeaturesAutoGenerator
+          selectedModuleIds={selectedModuleIds}
+          allModules={allAvailableModules}
+          value={form.watch('features') || ''}
+          onChange={(features) => form.setValue('features', features)}
+        />
+        {form.formState.errors.features && (
+          <p className="text-sm text-red-500">{form.formState.errors.features.message}</p>
+        )}
       </div>
     </div>
   );

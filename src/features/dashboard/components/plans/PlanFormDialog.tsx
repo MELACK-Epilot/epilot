@@ -27,6 +27,7 @@ export const PlanFormDialog = ({ open, onOpenChange, plan, mode }: PlanFormDialo
     selectedModuleIds,
     setSelectedModuleIds,
     validSelectedModules,
+    allAvailableModules,
     isLoading,
     onSubmit,
     generateSlug,
@@ -59,10 +60,16 @@ export const PlanFormDialog = ({ open, onOpenChange, plan, mode }: PlanFormDialo
               <TabsTrigger value="general" className="flex items-center gap-1.5 text-sm">
                 <Info className="w-3.5 h-3.5" />
                 Général
+                {(form.formState.errors.name || form.formState.errors.description) && (
+                  <span className="ml-1 text-red-500 text-base">⚠️</span>
+                )}
               </TabsTrigger>
               <TabsTrigger value="pricing" className="flex items-center gap-1.5 text-sm">
                 <DollarSign className="w-3.5 h-3.5" />
                 Tarification
+                {form.formState.errors.price && (
+                  <span className="ml-1 text-red-500 text-base">⚠️</span>
+                )}
               </TabsTrigger>
               <TabsTrigger value="limits" className="flex items-center gap-1.5 text-sm">
                 <Settings className="w-3.5 h-3.5" />
@@ -71,6 +78,9 @@ export const PlanFormDialog = ({ open, onOpenChange, plan, mode }: PlanFormDialo
               <TabsTrigger value="modules" className="flex items-center gap-1.5 text-sm">
                 <Layers className="w-3.5 h-3.5" />
                 Modules & Catégories
+                {(selectedCategoryIds.length === 0 || selectedModuleIds.length === 0) && (
+                  <span className="ml-1 text-red-500 text-base">⚠️</span>
+                )}
               </TabsTrigger>
             </TabsList>
 
@@ -79,7 +89,13 @@ export const PlanFormDialog = ({ open, onOpenChange, plan, mode }: PlanFormDialo
               scrollbarColor: '#d1d5db #f3f4f6'
             }}>
               <TabsContent value="general" className="mt-0">
-                <PlanFormGeneral form={form} mode={mode} onNameChange={handleNameChange} />
+                <PlanFormGeneral 
+                  form={form} 
+                  mode={mode} 
+                  onNameChange={handleNameChange}
+                  selectedModuleIds={selectedModuleIds}
+                  allAvailableModules={allAvailableModules || []}
+                />
               </TabsContent>
 
               <TabsContent value="pricing" className="mt-0">

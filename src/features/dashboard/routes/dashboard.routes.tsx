@@ -16,7 +16,6 @@ const SchoolGroups = lazy(() => import('../pages/SchoolGroups'));
 const Users = lazy(() => import('../pages/Users'));
 const Categories = lazy(() => import('../pages/Categories'));
 const Plans = lazy(() => import('../pages/PlansUltimate'));
-const Subscriptions = lazy(() => import('../pages/Subscriptions'));
 const Modules = lazy(() => import('../pages/Modules'));
 const Finances = lazy(() => import('../pages/Finances'));
 const Communication = lazy(() => import('../pages/Communication'));
@@ -50,10 +49,6 @@ export const dashboardRoutes: RouteObject = {
     {
       path: 'plans',
       element: <Plans />,
-    },
-    {
-      path: 'subscriptions',
-      element: <Subscriptions />,
     },
     {
       path: 'modules',

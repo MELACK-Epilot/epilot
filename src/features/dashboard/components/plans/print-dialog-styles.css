@@ -1,0 +1,218 @@
+/**
+ * Styles d'impression pour GroupDetailsDialog
+ */
+
+@media print {
+  /* Configuration de la page */
+  @page {
+    margin: 1.5cm;
+    size: A4;
+  }
+
+  /* Masquer les éléments non imprimables */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Afficher les éléments réservés à l'impression */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Configuration générale */
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    font-size: 12pt;
+    line-height: 1.4;
+  }
+
+  /* Dialog en pleine page */
+  [role="dialog"] {
+    position: static !important;
+    transform: none !important;
+    max-width: none !important;
+    max-height: none !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Contenu du dialog */
+  .dialog-content {
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  /* Onglets - afficher tout le contenu */
+  [role="tabpanel"] {
+    display: block !important;
+  }
+
+  [role="tablist"] {
+    display: none !important;
+  }
+
+  /* Titre principal */
+  h1, h2 {
+    font-size: 18pt;
+    font-weight: bold;
+    margin-bottom: 12pt;
+    page-break-after: avoid;
+  }
+
+  h3 {
+    font-size: 14pt;
+    font-weight: bold;
+    margin-top: 16pt;
+    margin-bottom: 8pt;
+    page-break-after: avoid;
+  }
+
+  /* Éviter les coupures de page */
+  .card, .bg-white {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 8pt;
+  }
+
+  /* Grilles - adapter pour l'impression */
+  .grid {
+    display: block !important;
+  }
+
+  .grid > * {
+    display: block !important;
+    margin-bottom: 8pt;
+    width: 100% !important;
+  }
+
+  /* Badges et éléments colorés */
+  .badge {
+    border: 1px solid #ccc !important;
+    background: #f5f5f5 !important;
+    color: #333 !important;
+    padding: 2pt 6pt;
+    font-size: 10pt;
+  }
+
+  /* Cartes de statistiques */
+  .bg-gradient-to-br {
+    background: #f8f9fa !important;
+    border: 1px solid #dee2e6 !important;
+    color: #333 !important;
+  }
+
+  /* Texte blanc sur fond coloré */
+  .text-white {
+    color: #333 !important;
+  }
+
+  /* Icônes - simplifier */
+  svg {
+    width: 12pt !important;
+    height: 12pt !important;
+  }
+
+  /* Liens */
+  a {
+    color: #333 !important;
+    text-decoration: underline !important;
+  }
+
+  /* Espacement des sections */
+  .space-y-6 > * + * {
+    margin-top: 16pt !important;
+  }
+
+  .space-y-4 > * + * {
+    margin-top: 12pt !important;
+  }
+
+  /* Tableaux et listes */
+  .divide-y > * {
+    border-bottom: 1px solid #ccc;
+    padding: 6pt 0;
+  }
+
+  /* Masquer les ombres */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Optimiser les couleurs de fond */
+  .bg-gray-50 {
+    background: #f8f9fa !important;
+    border: 1px solid #dee2e6 !important;
+  }
+
+  /* Saut de page avant certaines sections */
+  .print-page-break {
+    page-break-before: always;
+  }
+
+  /* En-tête de page personnalisé */
+  .print-header {
+    position: running(header);
+  }
+
+  /* Pied de page */
+  .print-footer {
+    position: running(footer);
+  }
+
+  @page {
+    @top-center {
+      content: "Détails du Groupe Scolaire";
+      font-size: 10pt;
+      color: #666;
+    }
+    
+    @bottom-right {
+      content: "Page " counter(page) " sur " counter(pages);
+      font-size: 10pt;
+      color: #666;
+    }
+  }
+
+  /* Forcer l'affichage de tous les onglets */
+  [data-state="inactive"] {
+    display: block !important;
+  }
+
+  /* Séparer les sections par des bordures */
+  .print-section {
+    border-top: 2px solid #333;
+    padding-top: 12pt;
+    margin-top: 16pt;
+  }
+
+  .print-section:first-child {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0;
+  }
+}
+
+/* Styles pour améliorer l'affichage à l'écran aussi */
+.group-details-dialog {
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.group-details-dialog .tab-content {
+  min-height: 400px;
+}
+
+.group-details-dialog .loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}

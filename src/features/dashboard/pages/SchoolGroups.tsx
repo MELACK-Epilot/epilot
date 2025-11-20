@@ -1,10 +1,11 @@
 /**
  * Page Gestion des Groupes Scolaires - VERSION REFACTORISÉE
- * Architecture modulaire avec composants réutilisables
+ * Architecture modulaire avec hooks personnalisés
+ * Respecte la limite de 350 lignes (@[/decouper])
  * @module SchoolGroups
  */
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
   SchoolGroupFormDialog,
   SchoolGroupsStats,
@@ -18,12 +19,10 @@ import {
 import { SchoolGroupModulesDialog } from '../components/school-groups/SchoolGroupModulesDialog';
 import {
   useSchoolGroups,
-  useDeleteSchoolGroup,
-  useActivateSchoolGroup,
-  useDeactivateSchoolGroup,
-  useSuspendSchoolGroup,
   useSchoolGroupStats,
 } from '../hooks/useSchoolGroups';
+import { useSchoolGroupsLogic } from '../hooks/useSchoolGroupsLogic';
+import { useSchoolGroupsActions } from '../hooks/useSchoolGroupsActions';
 import type { SchoolGroup } from '../types/dashboard.types';
 import { toast } from 'sonner';
 
@@ -36,63 +35,20 @@ export const SchoolGroups = () => {
   const schoolGroups = schoolGroupsQuery.data || [];
   const isLoading = schoolGroupsQuery.isLoading;
   const { data: stats } = useSchoolGroupStats();
-  const deleteSchoolGroup = useDeleteSchoolGroup();
-  const activateSchoolGroup = useActivateSchoolGroup();
-  const deactivateSchoolGroup = useDeactivateSchoolGroup();
-  const suspendSchoolGroup = useSuspendSchoolGroup();
 
-  // 2. États locaux
+  // 2. Hooks métier personnalisés
+  const logic = useSchoolGroupsLogic(schoolGroups);
+  const actions = useSchoolGroupsActions();
+
+  // 3. États UI locaux
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isModulesDialogOpen, setIsModulesDialogOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<SchoolGroup | null>(null);
   const [groupToDelete, setGroupToDelete] = useState<SchoolGroup | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterPlan, setFilterPlan] = useState<string>('all');
-  const [filterRegion, setFilterRegion] = useState<string>('all');
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
-  // 3. Logique de filtrage
-  const filteredData = useMemo(() => {
-    return schoolGroups.filter((group) => {
-      // Recherche
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const matchesSearch = 
-          group.name.toLowerCase().includes(query) ||
-          group.code.toLowerCase().includes(query) ||
-          group.region.toLowerCase().includes(query) ||
-          group.city.toLowerCase().includes(query) ||
-          group.adminName.toLowerCase().includes(query);
-        if (!matchesSearch) return false;
-      }
-
-      // Filtres
-      if (filterStatus !== 'all' && group.status !== filterStatus) return false;
-      if (filterPlan !== 'all' && group.plan !== filterPlan) return false;
-      if (filterRegion !== 'all' && group.region !== filterRegion) return false;
-
-      return true;
-    });
-  }, [schoolGroups, searchQuery, filterStatus, filterPlan, filterRegion]);
-
-  const uniqueRegions = useMemo(() => {
-    return Array.from(new Set(schoolGroups.map((g) => g.region)));
-  }, [schoolGroups]);
-
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-    if (filterStatus !== 'all') count++;
-    if (filterPlan !== 'all') count++;
-    if (filterRegion !== 'all') count++;
-    return count;
-  }, [filterStatus, filterPlan, filterRegion]);
-
-  // 4. Handlers
+  // 4. Handlers UI
   const handleView = (group: SchoolGroup) => {
     setSelectedGroup(group);
     setIsDetailDialogOpen(true);
@@ -116,7 +72,7 @@ export const SchoolGroups = () => {
     if (!groupToDelete) return;
 
     try {
-      await deleteSchoolGroup.mutateAsync(groupToDelete.id);
+      await actions.deleteSchoolGroup.mutateAsync(groupToDelete.id);
       toast.success('✅ Groupe supprimé', {
         description: `${groupToDelete.name} a été supprimé définitivement`,
       });
@@ -130,7 +86,7 @@ export const SchoolGroups = () => {
 
   const handleActivate = async (group: SchoolGroup) => {
     try {
-      await activateSchoolGroup.mutateAsync(group.id);
+      await actions.activateSchoolGroup.mutateAsync(group.id);
       toast.success('✅ Groupe activé', {
         description: `${group.name} est maintenant actif`,
       });
@@ -143,7 +99,7 @@ export const SchoolGroups = () => {
 
   const handleDeactivate = async (group: SchoolGroup) => {
     try {
-      await deactivateSchoolGroup.mutateAsync(group.id);
+      await actions.deactivateSchoolGroup.mutateAsync(group.id);
       toast.success('✅ Groupe désactivé', {
         description: `${group.name} a été désactivé`,
       });
@@ -156,7 +112,7 @@ export const SchoolGroups = () => {
 
   const handleSuspend = async (group: SchoolGroup) => {
     try {
-      await suspendSchoolGroup.mutateAsync(group.id);
+      await actions.suspendSchoolGroup.mutateAsync(group.id);
       toast.success('⚠️ Groupe suspendu', {
         description: `${group.name} a été suspendu`,
       });
@@ -167,58 +123,17 @@ export const SchoolGroups = () => {
     }
   };
 
-  const handleExport = () => {
-    // Export CSV
-    const csvContent = [
-      ['Nom', 'Code', 'Région', 'Ville', 'Admin', 'Plan', 'Statut'].join(','),
-      ...filteredData.map(g => 
-        [g.name, g.code, g.region, g.city, g.adminName, g.plan, g.status].join(',')
-      )
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `groupes_scolaires_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-
-    toast.success('✅ Export réussi', {
-      description: `${filteredData.length} groupe(s) exporté(s)`,
-    });
-  };
-
-  const resetFilters = () => {
-    setSearchQuery('');
-    setFilterStatus('all');
-    setFilterPlan('all');
-    setFilterRegion('all');
-  };
-
-  const handleBulkDelete = () => {
-    toast.info('Suppression en masse en cours...');
-  };
-
-  const handleBulkActivate = () => {
-    toast.info('Activation en masse en cours...');
-  };
-
-  const handleBulkDeactivate = () => {
-    toast.info('Désactivation en masse en cours...');
-  };
-
   // 5. Rendu - Composition des composants
   return (
     <div className="space-y-6 p-6">
       {/* Header avec actions */}
       <SchoolGroupsActions
-        selectedRows={selectedRows}
-        onExport={handleExport}
-        onBulkDelete={handleBulkDelete}
-        onBulkActivate={handleBulkActivate}
-        onBulkDeactivate={handleBulkDeactivate}
-        onClearSelection={() => setSelectedRows([])}
+        selectedRows={logic.selectedRows}
+        onExport={() => actions.handleExport(logic.filteredData)}
+        onBulkDelete={() => actions.handleBulkDelete(logic.selectedRows, () => logic.setSelectedRows([]))}
+        onBulkActivate={() => actions.handleBulkActivate(logic.selectedRows, () => logic.setSelectedRows([]))}
+        onBulkDeactivate={() => actions.handleBulkDeactivate(logic.selectedRows, () => logic.setSelectedRows([]))}
+        onClearSelection={() => logic.setSelectedRows([])}
         onCreateNew={() => setIsCreateModalOpen(true)}
       />
 
@@ -227,30 +142,30 @@ export const SchoolGroups = () => {
 
       {/* Filtres */}
       <SchoolGroupsFilters
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        filterStatus={filterStatus}
-        setFilterStatus={setFilterStatus}
-        filterPlan={filterPlan}
-        setFilterPlan={setFilterPlan}
-        filterRegion={filterRegion}
-        setFilterRegion={setFilterRegion}
-        uniqueRegions={uniqueRegions}
-        showFilters={showFilters}
-        setShowFilters={setShowFilters}
-        activeFiltersCount={activeFiltersCount}
-        resetFilters={resetFilters}
-        handleExport={handleExport}
-        viewMode={viewMode}
-        setViewMode={setViewMode}
+        searchQuery={logic.searchQuery}
+        setSearchQuery={logic.setSearchQuery}
+        filterStatus={logic.filterStatus}
+        setFilterStatus={logic.setFilterStatus}
+        filterPlan={logic.filterPlan}
+        setFilterPlan={logic.setFilterPlan}
+        filterRegion={logic.filterRegion}
+        setFilterRegion={logic.setFilterRegion}
+        uniqueRegions={logic.uniqueRegions}
+        showFilters={logic.showFilters}
+        setShowFilters={logic.setShowFilters}
+        activeFiltersCount={logic.activeFiltersCount}
+        resetFilters={logic.resetFilters}
+        handleExport={() => actions.handleExport(logic.filteredData)}
+        viewMode={logic.viewMode}
+        setViewMode={logic.setViewMode}
         isRefreshing={schoolGroupsQuery.isRefetching}
         onRefresh={() => schoolGroupsQuery.refetch()}
       />
 
       {/* Affichage conditionnel : Table ou Grid */}
-      {viewMode === 'list' ? (
+      {logic.viewMode === 'list' ? (
         <SchoolGroupsTable
-          data={filteredData}
+          data={logic.paginatedData}
           isLoading={isLoading}
           onView={handleView}
           onEdit={handleEdit}
@@ -259,10 +174,20 @@ export const SchoolGroups = () => {
           onDeactivate={handleDeactivate}
           onSuspend={handleSuspend}
           onViewModules={handleViewModules}
+          selectedRows={logic.selectedRows}
+          onSelectionChange={logic.setSelectedRows}
+          sortField={logic.sortField}
+          sortDirection={logic.sortDirection}
+          onSort={logic.handleSort}
+          page={logic.page}
+          pageSize={logic.pageSize}
+          totalPages={logic.totalPages}
+          totalItems={logic.sortedData.length}
+          onPageChange={logic.setPage}
         />
       ) : (
         <SchoolGroupsGrid
-          data={filteredData}
+          data={logic.paginatedData}
           isLoading={isLoading}
           onView={handleView}
           onEdit={handleEdit}
@@ -305,7 +230,7 @@ export const SchoolGroups = () => {
         isOpen={!!groupToDelete}
         onClose={() => setGroupToDelete(null)}
         onConfirm={handleDeleteConfirm}
-        isDeleting={deleteSchoolGroup.isPending}
+        isDeleting={actions.deleteSchoolGroup.isPending}
       />
 
       {/* Dialog Modules & Catégories */}
