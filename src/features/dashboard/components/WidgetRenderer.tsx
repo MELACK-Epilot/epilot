@@ -11,8 +11,10 @@ import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import type { WidgetLayoutItem } from '../types/widget.types';
 
 // Lazy loading des widgets
-const SystemAlertsWidget = lazy(() => import('./widgets/SystemAlertsWidget'));
+const SuperAdminAlertsWidget = lazy(() => import('./widgets/SuperAdminAlertsWidget'));
+const SuperAdminInsightsWidget = lazy(() => import('./widgets/SuperAdminInsightsWidget'));
 const FinancialOverviewWidget = lazy(() => import('./widgets/FinancialOverviewWidget'));
+const FinancialChartsWidget = lazy(() => import('./widgets/FinancialChartsWidget'));
 const ModuleStatusWidget = lazy(() => import('./widgets/ModuleStatusWidget'));
 const RealtimeActivityWidget = lazy(() => import('./widgets/RealtimeActivityWidget'));
 
@@ -46,9 +48,15 @@ export const WidgetRenderer = ({ widget }: WidgetRendererProps) => {
   const getWidget = () => {
     switch (widget.id) {
       case 'system-alerts':
-        return <SystemAlertsWidget />;
+      case 'super-admin-alerts':
+        return <SuperAdminAlertsWidget />;
+      case 'ai-insights':
+      case 'super-admin-insights':
+        return <SuperAdminInsightsWidget />;
       case 'financial-overview':
         return <FinancialOverviewWidget />;
+      case 'financial-charts':
+        return <FinancialChartsWidget />;
       case 'module-status':
         return <ModuleStatusWidget />;
       case 'realtime-activity':

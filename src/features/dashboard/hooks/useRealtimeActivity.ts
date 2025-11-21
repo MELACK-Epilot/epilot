@@ -11,11 +11,13 @@ import type { RealtimeActivity } from '../types/widget.types';
 
 interface ActivityLog {
   id: string;
-  action_type: string;
+  action: string;
+  entity: string;
+  entity_id: string;
+  details: string;
   user_id: string;
-  user_name: string;
-  description: string;
   created_at: string;
+  school_group_id?: string;
 }
 
 const fetchRecentActivity = async (
@@ -25,7 +27,14 @@ const fetchRecentActivity = async (
   try {
     let query = supabase
       .from('activity_logs')
-      .select('*')
+      .select(`
+        *,
+        users!activity_logs_user_id_fkey (
+          first_name,
+          last_name,
+          email
+        )
+      `)
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -48,53 +57,63 @@ const fetchRecentActivity = async (
       });
     }
 
-    return (data || []).map((log: ActivityLog) => ({
-      id: log.id,
-      type: mapActionType(log.action_type),
-      user: log.user_name || 'Système',
-      action: log.description,
-      timestamp: log.created_at,
-    }));
+    return (data || []).map((log: any) => {
+      const user = log.users;
+      const userName = user 
+        ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email
+        : 'Système';
+
+      return {
+        id: log.id,
+        type: mapActionToType(log.action, log.entity),
+        user: userName,
+        action: log.details || `${log.action} ${log.entity}`,
+        timestamp: log.created_at,
+      };
+    });
   } catch (error) {
     console.error('Erreur lors de la récupération de l\'activité:', error);
     return [];
   }
 };
 
-const mapActionType = (actionType: string): RealtimeActivity['type'] => {
+const mapActionToType = (action: string, entity: string): RealtimeActivity['type'] => {
+  // Mapper selon action + entity
+  const key = `${action}.${entity}`;
+  
   const mapping: Record<string, RealtimeActivity['type']> = {
     // Authentification
-    'user.login': 'login',
-    'user.logout': 'login',
+    'login.user': 'login',
+    'logout.user': 'login',
     
     // Groupes & Écoles
-    'school_group.created': 'school_added',
-    'school_group.updated': 'school_added',
-    'school.created': 'school_added',
-    'school.updated': 'school_added',
+    'create.school_group': 'school_added',
+    'update.school_group': 'school_added',
+    'create.school': 'school_added',
+    'update.school': 'school_added',
     
     // Utilisateurs
-    'user.created': 'user_created',
-    'user.updated': 'user_created',
-    'user.deleted': 'user_created',
+    'create.user': 'user_created',
+    'update.user': 'user_created',
+    'delete.user': 'user_created',
     
     // Abonnements
-    'subscription.created': 'subscription_updated',
-    'subscription.updated': 'subscription_updated',
-    'subscription.cancelled': 'subscription_updated',
+    'create.subscription': 'subscription_updated',
+    'update.subscription': 'subscription_updated',
+    'cancel.subscription': 'subscription_updated',
     
     // Modules
-    'module.assigned': 'user_created',
-    'module.unassigned': 'user_created',
+    'assign.module': 'user_created',
+    'unassign.module': 'user_created',
     
     // Paiements
-    'payment.created': 'subscription_updated',
-    'payment.completed': 'subscription_updated',
-    'payment.failed': 'subscription_updated',
+    'create.payment': 'subscription_updated',
+    'complete.payment': 'subscription_updated',
+    'fail.payment': 'subscription_updated',
   };
   
-  // Retourner 'login' par défaut (type générique)
-  return mapping[actionType] || 'login';
+  // Retourner le mapping ou 'login' par défaut
+  return mapping[key] || 'login';
 };
 
 export const useRealtimeActivity = () => {
@@ -125,9 +144,9 @@ export const useRealtimeActivity = () => {
           queryClient.setQueryData<RealtimeActivity[]>(['realtime-activity', user?.role, schoolGroupId], (old = []) => {
             const newActivity: RealtimeActivity = {
               id: payload.new.id,
-              type: mapActionType(payload.new.action_type),
-              user: payload.new.user_name || 'Système',
-              action: payload.new.description,
+              type: mapActionToType(payload.new.action, payload.new.entity),
+              user: 'Utilisateur', // On ne peut pas récupérer le nom en temps réel facilement
+              action: payload.new.details || `${payload.new.action} ${payload.new.entity}`,
               timestamp: payload.new.created_at,
             };
             return [newActivity, ...old].slice(0, 50); // Garder max 50

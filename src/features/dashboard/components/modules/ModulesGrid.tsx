@@ -87,7 +87,10 @@ export const ModulesGrid = ({ data, isLoading, onView, onEdit, onDelete }: Modul
     <AnimatedContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" stagger={0.05}>
       {data.map((module) => (
         <AnimatedItem key={module.id}>
-          <Card className="relative overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group cursor-pointer h-80 flex flex-col">
+          <Card 
+            className="relative overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group cursor-pointer h-80 flex flex-col"
+            onClick={() => onView(module)}
+          >
             {/* Background gradient basé sur la catégorie */}
             <div 
               className="absolute inset-0 opacity-5"
@@ -113,23 +116,28 @@ export const ModulesGrid = ({ data, isLoading, onView, onEdit, onDelete }: Modul
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => onView(module)}>
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(module); }}>
                       <Eye className="h-4 w-4 mr-2" />
                       Voir détails
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onEdit(module)}>
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(module); }}>
                       <Edit className="h-4 w-4 mr-2" />
                       Modifier
                     </DropdownMenuItem>
                     <DropdownMenuItem 
-                      onClick={() => onDelete(module)}
+                      onClick={(e) => { e.stopPropagation(); onDelete(module); }}
                       className="text-[#E63946]"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />

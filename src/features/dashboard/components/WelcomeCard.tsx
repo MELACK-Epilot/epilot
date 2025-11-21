@@ -3,17 +3,15 @@
  * @module WelcomeCard
  */
 
-import { Settings, Activity, Plus, LayoutGrid, School, Users } from 'lucide-react';
+import { Settings, Activity, Plus, School, Users } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/store/auth.store';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import { Button } from '@/components/ui/button';
-import { ManageWidgetsSheet } from './ManageWidgetsSheet';
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 
 export const WelcomeCard = () => {
   const { user } = useAuthStore();
   const { data: stats } = useDashboardStats();
-  const [isManageOpen, setIsManageOpen] = useState(false);
   
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -26,12 +24,6 @@ export const WelcomeCard = () => {
           label: 'Ajouter Groupe',
           href: '/dashboard/school-groups?action=create',
           color: 'text-[#2A9D8F]',
-        },
-        {
-          icon: LayoutGrid,
-          label: 'Gérer Widgets',
-          onClick: () => setIsManageOpen(true),
-          color: 'text-[#1D3557]',
         },
         {
           icon: Activity,
@@ -200,9 +192,6 @@ export const WelcomeCard = () => {
           </div>
         )}
       </div>
-
-      {/* Sheet pour gérer les widgets */}
-      <ManageWidgetsSheet open={isManageOpen} onOpenChange={setIsManageOpen} />
     </>
   );
 };

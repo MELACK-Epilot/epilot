@@ -2,9 +2,10 @@
  * Routes du module Inscriptions
  */
 
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { InscriptionsHub } from '../pages/InscriptionsHub';
 import { InscriptionsListe } from '../pages/InscriptionsListe';
+import { InscriptionDetails } from '../pages/InscriptionDetails';
 
 /**
  * Composant principal du module Inscriptions
@@ -19,8 +20,8 @@ export const InscriptionsModule = () => {
       {/* Liste complète des inscriptions */}
       <Route path="liste" element={<InscriptionsListe />} />
       
-      {/* Détails d'une inscription - TODO: Créer la page */}
-      <Route path=":id" element={<Navigate to="/dashboard/modules/inscriptions/liste" replace />} />
+      {/* Détails d'une inscription */}
+      <Route path=":id" element={<InscriptionDetails />} />
     </Routes>
   );
 };

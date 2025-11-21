@@ -8,11 +8,13 @@ import { useDashboardStats } from '../hooks/useDashboardStats';
 import { useAdminGroupStats } from '../hooks/useAdminGroupStats';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/store/auth.store';
+import { useResponsive } from '@/hooks/useResponsive';
 import { AnimatedContainer, AnimatedItem } from './AnimatedCard';
 
 export const StatsWidget = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { isMobile, isTablet } = useResponsive();
   
   const isSuperAdmin = user?.role === 'super_admin';
   const isAdminGroupe = user?.role === 'admin_groupe';
@@ -112,9 +114,15 @@ export const StatsWidget = () => {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={`grid gap-3 sm:gap-4 ${
+        isMobile 
+          ? 'grid-cols-1' 
+          : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+      }`}>
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-white rounded-2xl border border-gray-200 p-6 animate-pulse min-h-[180px]">
+          <div key={i} className={`bg-white rounded-2xl border border-gray-200 animate-pulse ${
+            isMobile ? 'p-4 min-h-[140px]' : 'p-6 min-h-[180px]'
+          }`}>
             <div className="h-3 bg-gray-200 rounded w-20 mb-2" />
             <div className="h-8 bg-gray-200 rounded w-16 mb-2" />
             <div className="h-2 bg-gray-200 rounded w-16" />
@@ -125,7 +133,11 @@ export const StatsWidget = () => {
   }
 
   return (
-    <AnimatedContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" stagger={0.05}>
+    <AnimatedContainer className={`grid gap-3 sm:gap-4 ${
+      isMobile 
+        ? 'grid-cols-1' 
+        : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+    }`} stagger={0.05}>
       {cards.map((card) => {
         const Icon = card.icon;
         const isPositive = card.trend >= 0;
@@ -134,7 +146,9 @@ export const StatsWidget = () => {
           <AnimatedItem key={card.title}>
             <button
               onClick={() => navigate(card.route)}
-              className={`group relative overflow-hidden bg-gradient-to-br ${card.gradient} rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.03] text-left border border-white/10 cursor-pointer w-full h-full min-h-[180px] flex flex-col`}
+              className={`group relative overflow-hidden bg-gradient-to-br ${card.gradient} rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.03] text-left border border-white/10 cursor-pointer w-full h-full flex flex-col ${
+                isMobile ? 'p-4 min-h-[140px]' : 'p-6 min-h-[180px]'
+              }`}
             >
               {/* Cercles décoratifs animés (sans blur excessif) */}
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />

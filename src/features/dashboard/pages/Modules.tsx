@@ -93,16 +93,36 @@ export const Modules = () => {
   const navigate = useNavigate();
 
   const handleView = (module: any) => {
-    // Si c'est le module Inscriptions, naviguer vers son hub
-    if (module.slug === 'inscriptions-eleves' || module.slug === 'gestion-inscriptions') {
-      navigate('/dashboard/modules/inscriptions');
-      return;
-    }
+    // Router vers les modules implémentés
+    const moduleRoutes: Record<string, string> = {
+      'inscriptions-eleves': '/dashboard/modules/inscriptions',
+      'gestion-inscriptions': '/dashboard/modules/inscriptions',
+      'admission-eleves': '/dashboard/modules/admission',
+      'gestion-eleves': '/dashboard/students',
+      'gestion-classes': '/dashboard/classes',
+      'gestion-notes': '/dashboard/grades',
+      'gestion-absences': '/dashboard/attendance',
+      'gestion-emploi-temps': '/dashboard/schedule',
+      'gestion-frais': '/dashboard/fees',
+      'gestion-paiements': '/dashboard/payments',
+      'gestion-bibliotheque': '/dashboard/library',
+      'gestion-cantine': '/dashboard/canteen',
+      'gestion-transport': '/dashboard/transport',
+      'communication': '/dashboard/communication',
+      'rapports': '/dashboard/reports',
+    };
+
+    const route = moduleRoutes[module.slug];
     
-    // Sinon, afficher un toast (pour les modules pas encore implémentés)
-    toast.info('Module en développement', {
-      description: `${module.name} sera bientôt disponible`,
-    });
+    if (route) {
+      navigate(route);
+    } else {
+      // Pour les modules pas encore implémentés
+      toast.info('Module en développement', {
+        description: `${module.name} sera bientôt disponible`,
+        duration: 3000,
+      });
+    }
   };
 
   const handleEdit = (module: any) => {

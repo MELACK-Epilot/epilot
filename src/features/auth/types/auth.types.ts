@@ -3,6 +3,8 @@
  * @module auth.types
  */
 
+import type { Role } from '@/config/roles';
+
 /**
  * Données de connexion utilisateur
  */
@@ -31,7 +33,7 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  role: UserRole;
+  role: Role; // Utilise le type Role de roles.ts (source unique de vérité)
   avatar?: string;
   gender?: 'male' | 'female' | 'other';
   dateOfBirth?: string;
