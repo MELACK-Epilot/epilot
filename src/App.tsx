@@ -17,7 +17,7 @@ import DashboardLayoutModern from './features/dashboard/components/DashboardLayo
 import DashboardOverview from './features/dashboard/pages/DashboardOverview';
 import SchoolGroups from './features/dashboard/pages/SchoolGroups';
 import Schools from './features/dashboard/pages/Schools';
-import FinancesGroupe from './features/dashboard/pages/FinancesGroupe';
+import FinancesGroupe from './features/dashboard/pages/FinancesGroupe.ultra';
 import Users from './features/dashboard/pages/Users';
 import Categories from './features/dashboard/pages/Categories';
 import Plans from './features/dashboard/pages/PlansUltimate';
@@ -35,7 +35,7 @@ import MyGroupModules from './features/dashboard/pages/MyGroupModules';
 import AssignModules from './features/dashboard/pages/AssignModules';
 import PermissionsModulesPage from './features/dashboard/pages/PermissionsModulesPage';
 import PlanChangeRequests from './features/dashboard/pages/PlanChangeRequests';
-import FinancesEcole from './features/dashboard/pages/FinancesEcole';
+import FinancesEcole from './features/dashboard/pages/FinancesEcole.ultra';
 import FinancesNiveau from './features/dashboard/pages/FinancesNiveau';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { RoleBasedRedirect } from './components/RoleBasedRedirect';
@@ -205,7 +205,7 @@ function App() {
                 <Modules />
               </ProtectedRoute>
             } />
-            <Route path="modules/inscriptions/*" element={
+            <Route path="modules/gestion-inscriptions/*" element={
               <ProtectedRoute roles={['super_admin', 'admin_groupe', 'secretaire', 'directeur']}>
                 <InscriptionsModule />
               </ProtectedRoute>

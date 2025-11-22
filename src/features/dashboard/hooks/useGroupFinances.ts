@@ -4,7 +4,7 @@
  * @module useGroupFinances
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/features/auth/store/auth.store';
 
@@ -50,6 +50,7 @@ export interface SchoolFinancialSummary {
   overdueAmount: number;
   pendingAmount: number;
   recoveryRate: number;
+  totalStudents?: number;
 }
 
 export interface RevenueByCategory {
@@ -82,11 +83,13 @@ export const useGroupFinancialStats = () => {
 
       try {
         // Utiliser la vue group_financial_stats
-        const { data, error } = await supabase
+        const { data: rawData, error } = await supabase
           .from('group_financial_stats')
           .select('*')
           .eq('school_group_id', user.schoolGroupId)
           .single();
+
+        const data = rawData as any;
 
         if (error) {
           console.error('Erreur vue group_financial_stats:', error);
@@ -154,10 +157,12 @@ export const useSchoolsFinancialSummary = () => {
 
       try {
         // Utiliser la vue school_financial_stats
-        const { data, error } = await supabase
+        const { data: rawData, error } = await supabase
           .from('school_financial_stats')
           .select('*')
           .eq('school_group_id', user.schoolGroupId);
+
+        const data = rawData as any;
 
         if (error) {
           console.error('Erreur vue school_financial_stats:', error);
@@ -283,9 +288,9 @@ export const useRevenueByCategory = () => {
           return [];
         }
 
-        const schoolIds = schools.map(s => s.id);
+        const schoolIds = (schools as any[]).map(s => s.id);
 
-        const { data, error } = await supabase
+        const { data: rawData, error } = await supabase
           .from('fee_payments')
           .select(`
             amount,
@@ -299,6 +304,8 @@ export const useRevenueByCategory = () => {
           `)
           .in('school_id', schoolIds)
           .eq('status', 'completed');
+
+        const data = rawData as any;
 
         if (error) {
           console.error('Erreur revenus par catégorie:', error);
@@ -318,15 +325,15 @@ export const useRevenueByCategory = () => {
           acc[category].amount += Number(payment.amount) || 0;
           acc[category].count += 1;
           return acc;
-        }, {});
+        }, {} as Record<string, { amount: number; count: number }>);
 
-        const total = Object.values(grouped).reduce((sum, g) => sum + g.amount, 0);
+        const total = Object.values(grouped).reduce((sum: number, g: any) => sum + (g.amount || 0), 0);
 
-        return Object.entries(grouped).map(([category, data]) => ({
+        return Object.entries(grouped).map(([category, entry]: [string, any]) => ({
           category,
-          amount: data.amount,
-          count: data.count,
-          percentage: total > 0 ? (data.amount / total) * 100 : 0,
+          amount: entry.amount,
+          count: entry.count,
+          percentage: total > 0 ? (entry.amount / total) * 100 : 0,
         })).sort((a, b) => b.amount - a.amount);
       } catch (error) {
         console.error('Erreur useRevenueByCategory:', error);
@@ -353,11 +360,13 @@ export const useExpensesByCategory = () => {
       }
 
       try {
-        const { data, error } = await supabase
+        const { data: rawData, error } = await supabase
           .from('school_expenses')
           .select('category, amount')
           .or(`school_group_id.eq.${user.schoolGroupId},school_id.in.(${await getSchoolIds(user.schoolGroupId)})`)
           .eq('status', 'paid');
+
+        const data = rawData as any;
 
         if (error) {
           console.error('Erreur dépenses par catégorie:', error);
@@ -377,15 +386,15 @@ export const useExpensesByCategory = () => {
           acc[category].amount += Number(expense.amount) || 0;
           acc[category].count += 1;
           return acc;
-        }, {});
+        }, {} as Record<string, { amount: number; count: number }>);
 
-        const total = Object.values(grouped).reduce((sum, g) => sum + g.amount, 0);
+        const total = Object.values(grouped).reduce((sum: number, g: any) => sum + (g.amount || 0), 0);
 
-        return Object.entries(grouped).map(([category, data]) => ({
+        return Object.entries(grouped).map(([category, entry]: [string, any]) => ({
           category,
-          amount: data.amount,
-          count: data.count,
-          percentage: total > 0 ? (data.amount / total) * 100 : 0,
+          amount: entry.amount,
+          count: entry.count,
+          percentage: total > 0 ? (entry.amount / total) * 100 : 0,
         })).sort((a, b) => b.amount - a.amount);
       } catch (error) {
         console.error('Erreur useExpensesByCategory:', error);
@@ -398,48 +407,93 @@ export const useExpensesByCategory = () => {
 };
 
 // ============================================================================
+// HOOK : ACTUALISER LES DONNÉES
+// ============================================================================
+
+export const useRefreshFinancialData = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!user?.schoolGroupId) throw new Error('Non autorisé');
+      
+      // Appel RPC pour rafraîchir les vues matérialisées
+      const { error } = await supabase.rpc('refresh_financial_views', {
+        p_school_group_id: user.schoolGroupId
+      } as any);
+
+      // Si l'RPC n'existe pas encore, on ne bloque pas le flux
+      if (error && error.code !== 'PGRST202') { // PGRST202 = function not found
+        console.warn('Erreur refresh_financial_views:', error);
+        // On ne throw pas l'erreur si la fonction n'existe pas, pour permettre le refetch côté client
+        if (error.code !== '42883') { // 42883 = undefined_function
+           throw error;
+        }
+      }
+    },
+    onSuccess: () => {
+      // Invalider toutes les requêtes financières pour forcer le rechargement
+      queryClient.invalidateQueries({ queryKey: ['group-financial-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['schools-financial-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['revenue-by-category'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses-by-category'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-financial-history'] });
+    }
+  });
+};
+
+// ============================================================================
 // FONCTIONS UTILITAIRES
 // ============================================================================
 
 async function getSchoolIds(schoolGroupId: string): Promise<string> {
-  const { data } = await supabase
+  const { data: rawData } = await supabase
     .from('schools')
     .select('id')
     .eq('school_group_id', schoolGroupId);
   
-  return data?.map(s => s.id).join(',') || '';
+  const data = rawData as any;
+  
+  return data?.map((s: any) => s.id).join(',') || '';
 }
 
 async function calculateGroupStatsManually(schoolGroupId: string): Promise<GroupFinancialStats> {
   // Fallback si la vue n'existe pas
-  const { data: schools } = await supabase
+  const { data: rawSchools } = await supabase
     .from('schools')
     .select('id')
     .eq('school_group_id', schoolGroupId);
+
+  const schools = rawSchools as any;
 
   if (!schools || schools.length === 0) {
     return getDefaultGroupStats();
   }
 
-  const schoolIds = schools.map(s => s.id);
+  const schoolIds = schools.map((s: any) => s.id);
 
   // Revenus
-  const { data: payments } = await supabase
+  const { data: rawPayments } = await supabase
     .from('fee_payments')
     .select('amount')
     .in('school_id', schoolIds)
     .eq('status', 'completed');
 
-  const totalRevenue = payments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
+  const payments = rawPayments as any;
+
+  const totalRevenue = payments?.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0) || 0;
 
   // Dépenses
-  const { data: expenses } = await supabase
+  const { data: rawExpenses } = await supabase
     .from('school_expenses')
     .select('amount')
     .or(`school_group_id.eq.${schoolGroupId},school_id.in.(${schoolIds.join(',')})`)
     .eq('status', 'paid');
 
-  const totalExpenses = expenses?.reduce((sum, e) => sum + (Number(e.amount) || 0), 0) || 0;
+  const expenses = rawExpenses as any;
+
+  const totalExpenses = expenses?.reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0) || 0;
 
   const balance = totalRevenue - totalExpenses;
   const profitMargin = totalRevenue > 0 ? (balance / totalRevenue) * 100 : 0;

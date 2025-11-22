@@ -111,7 +111,7 @@ const schoolSchema = z.object({
   telephone_mobile: z.string().optional(),
   email: z.string().email('Email invalide').optional().or(z.literal('')),
   email_institutionnel: z.string().email('Email invalide').optional().or(z.literal('')),
-  site_web: z.union([z.string().url('URL invalide'), z.literal('')]).optional(),
+  site_web: z.string().optional().or(z.literal('')),
 });
 
 type SchoolFormData = z.infer<typeof schoolSchema>;
@@ -239,11 +239,14 @@ export function SchoolFormDialog({
         code: school.code,
         status: school.status,
         type_etablissement: (school as any).type_etablissement || 'prive',
-        has_preschool: (school as any).has_preschool || false,
-        has_primary: (school as any).has_primary || false,
-        has_middle: (school as any).has_middle || false,
-        has_high: (school as any).has_high || false,
-        annee_ouverture: (school as any).annee_ouverture || '',
+        
+        // Forcer les booléens pour éviter les problèmes de "levels ignored"
+        has_preschool: Boolean((school as any).has_preschool),
+        has_primary: Boolean((school as any).has_primary),
+        has_middle: Boolean((school as any).has_middle),
+        has_high: Boolean((school as any).has_high),
+        
+        annee_ouverture: (school as any).annee_ouverture ? String((school as any).annee_ouverture) : '',
         description: (school as any).description || '',
         logo_url: school.logo_url || '',
         couleur_principale: (school as any).couleur_principale || '#1D3557',

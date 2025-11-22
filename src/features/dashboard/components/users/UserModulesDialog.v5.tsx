@@ -29,6 +29,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUserAssignedModules } from '../../hooks/useUserAssignedModules';
 import { useUserModuleStatsOptimized } from '../../hooks/useSchoolGroupModulesPaginated';
 
+import { useRemoveModuleOptimistic, useUpdatePermissionsOptimistic } from '../../hooks/useAssignModulesOptimistic';
+
 // Onglets
 import { StatsTab } from './tabs/StatsTab';
 import { ModulesTab as ModulesTabV6 } from './tabs/ModulesTab.v6';
@@ -43,7 +45,7 @@ interface UserModulesDialogProps {
     email: string;
     role: string;
     avatar?: string;
-    schoolGroupId: string;
+    schoolGroupId?: string;
   };
   isOpen: boolean;
   onClose: () => void;
@@ -56,6 +58,10 @@ export const UserModulesDialog = ({ user, isOpen, onClose }: UserModulesDialogPr
   // Data fetching optimisé (avec optional chaining pour user)
   const { data: assignedModules, isLoading: loadingAssigned, refetch: refetchAssigned } = useUserAssignedModules(user?.id);
   const { data: moduleStats, isLoading: loadingStats } = useUserModuleStatsOptimized(user?.id);
+  
+  // Mutations optimistes
+  const removeMutation = useRemoveModuleOptimistic();
+  const updatePermissionsMutation = useUpdatePermissionsOptimistic();
 
   // ⚠️ Guard APRÈS les hooks
   if (!user) return null;
@@ -65,13 +71,29 @@ export const UserModulesDialog = ({ user, isOpen, onClose }: UserModulesDialogPr
     refetchAssigned();
     setActiveTab('assigned');
   };
+  
+  // Handlers pour AssignedTab
+  const handleRemoveModule = async (moduleId: string) => {
+    await removeMutation.mutateAsync({
+      userId: user.id,
+      moduleId
+    });
+  };
+
+  const handleUpdatePermissions = async (moduleId: string, permissions: any) => {
+    await updatePermissionsMutation.mutateAsync({
+      userId: user.id,
+      moduleId,
+      permissions
+    });
+  };
 
   // Assigned module IDs
   const assignedModuleIds = new Set(assignedModules?.map((m: any) => m.module_id) || []);
 
   // Counts
   const assignedCount = assignedModules?.length || 0;
-  const totalCount = moduleStats?.total_modules || 0;
+  const totalCount = (moduleStats as any)?.total_modules || 0;
   const availableCount = totalCount - assignedCount;
 
   return (
@@ -207,11 +229,10 @@ export const UserModulesDialog = ({ user, isOpen, onClose }: UserModulesDialogPr
               <ScrollArea className="h-full">
                 <div className="p-4">
                   <AssignedTab
-                    user={user}
-                    assignedModules={assignedModules || []}
-                    loadingAssigned={loadingAssigned}
-                    onRemoveSuccess={refetchAssigned}
-                    onUpdateSuccess={refetchAssigned}
+                    modules={assignedModules || []}
+                    isLoading={loadingAssigned}
+                    onRemove={handleRemoveModule}
+                    onUpdatePermissions={handleUpdatePermissions}
                   />
                 </div>
               </ScrollArea>

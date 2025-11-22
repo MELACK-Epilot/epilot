@@ -40,6 +40,7 @@ interface UserFilters {
   query?: string;
   status?: 'active' | 'inactive' | 'suspended';
   schoolGroupId?: string;
+  schoolId?: string;
   role?: 'admin_groupe';
   page?: number;
   pageSize?: number;
@@ -93,6 +94,11 @@ export const useUsers = (filters?: UserFilters) => {
       } else {
         // Super Admin : Voir Super Admin ET Admin Groupe uniquement
         query = query.in('role', ['super_admin', 'admin_groupe']);
+      }
+
+      // Filtre par école
+      if (filters?.schoolId) {
+        query = query.eq('school_id', filters.schoolId);
       }
 
       // Filtres (adaptés pour profiles)
@@ -743,5 +749,41 @@ export const useUserStats = (schoolGroupId?: string) => {
       };
     },
     staleTime: 5 * 60 * 1000,
+  });
+};
+
+/**
+ * Hook pour obtenir l'évolution des utilisateurs (12 derniers mois)
+ */
+export const useUserEvolutionStats = (schoolGroupId?: string) => {
+  return useQuery({
+    queryKey: ['user-evolution', schoolGroupId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .rpc('get_user_evolution_stats', { p_school_group_id: schoolGroupId || null });
+
+      if (error) throw error;
+
+      return data as { month_label: string; user_count: number }[];
+    },
+    staleTime: 30 * 60 * 1000, // 30 minutes
+  });
+};
+
+/**
+ * Hook pour obtenir la répartition des utilisateurs (par école ou groupe)
+ */
+export const useUserDistributionStats = (schoolGroupId?: string) => {
+  return useQuery({
+    queryKey: ['user-distribution', schoolGroupId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .rpc('get_user_distribution_stats', { p_school_group_id: schoolGroupId || null });
+
+      if (error) throw error;
+
+      return data as { name: string; value: number }[];
+    },
+    staleTime: 30 * 60 * 1000, // 30 minutes
   });
 };

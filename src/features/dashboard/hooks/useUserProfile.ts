@@ -10,6 +10,18 @@ import { toast } from 'sonner';
 // =====================================================
 // TYPES
 // =====================================================
+export interface LoginHistoryEntry {
+  id: string;
+  user_id: string;
+  login_at: string;
+  device_type?: string;
+  location_city?: string;
+  location_country?: string;
+  ip_address?: string;
+  user_agent?: string;
+  status?: string;
+}
+
 export interface UserPreferences {
   id: string;
   user_id: string;
@@ -140,7 +152,7 @@ export const useLoginHistory = (userId: string | undefined, limit = 50) => {
         });
       
       if (error) throw error;
-      return data;
+      return (data || []) as LoginHistoryEntry[];
     },
     enabled: !!userId,
   });

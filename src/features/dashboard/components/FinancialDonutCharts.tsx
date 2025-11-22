@@ -19,8 +19,9 @@ interface FinancialDonutChartsProps {
   isLoading?: boolean;
 }
 
-const REVENUE_COLORS = ['#2A9D8F', '#264653', '#E76F51', '#F4A261', '#E9C46A'];
-const EXPENSE_COLORS = ['#E63946', '#F77F00', '#FCBF49', '#EAE2B7', '#D62828'];
+// ✅ COULEURS OFFICIELLES E-PILOT
+const REVENUE_COLORS = ['#2A9D8F', '#1D3557', '#E9C46A', '#238b7e', '#457B9D'];
+const EXPENSE_COLORS = ['#E63946', '#E9C46A', '#1D3557', '#c72f3a', '#457B9D'];
 
 export const FinancialDonutCharts = ({ 
   revenueData, 

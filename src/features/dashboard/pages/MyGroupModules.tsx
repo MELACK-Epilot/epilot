@@ -23,6 +23,8 @@ import {
   CheckCircle2,
   Building2,
   GraduationCap,
+  Rocket,
+  Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -39,6 +41,7 @@ import { useCurrentUserGroup } from '../hooks/useCurrentUserGroup';
 import { useSchoolGroupModules, useSchoolGroupCategories } from '../hooks/useSchoolGroupModules';
 import { SchoolGroupModulesDialog } from '../components/school-groups/SchoolGroupModulesDialog';
 import { PlanUpgradeRequestDialog } from '../components/plans/PlanUpgradeRequestDialog';
+import { ModuleDetailsDialog } from '../components/modules/ModuleDetailsDialog';
 import type { ModuleWithCategory } from '../hooks/useSchoolGroupModules';
 
 /**
@@ -116,48 +119,78 @@ const StatsCard = ({
 /**
  * Module Card pour vue grille
  */
-const ModuleCard = ({ module, index }: { module: ModuleWithCategory; index: number }) => {
+const ModuleCard = ({ 
+  module, 
+  index, 
+  onDetails,
+  onLaunch 
+}: { 
+  module: ModuleWithCategory; 
+  index: number; 
+  onDetails: () => void;
+  onLaunch: () => void;
+}) => {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: index * 0.05, duration: 0.3 }}
-      className="group"
+      className="group h-full"
     >
-      <Card className="p-5 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] border-gray-200 hover:border-[#2A9D8F] bg-white">
-        {/* Header avec icône */}
-        <div className="flex items-start gap-4 mb-4">
-          <div
-            className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300"
-            style={{
-              backgroundColor: module.category?.color ? `${module.category.color}20` : '#E5E7EB',
-            }}
-          >
-            <Package
-              className="h-7 w-7"
+      <Card className="p-5 hover:shadow-lg transition-all duration-300 border-gray-200 hover:border-[#2A9D8F] bg-white h-full flex flex-col relative overflow-hidden">
+        {/* Background hover effect */}
+        <div className="absolute inset-0 bg-gradient-to-br from-transparent to-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        
+        <div className="relative z-10 flex flex-col h-full">
+          {/* Header avec icône */}
+          <div className="flex items-start gap-4 mb-4">
+            <div
+              className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform duration-300"
               style={{
-                color: module.category?.color || '#6B7280',
+                backgroundColor: module.category?.color ? `${module.category.color}20` : '#E5E7EB',
               }}
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h4 className="font-semibold text-gray-900 truncate">{module.name}</h4>
-              <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
+            >
+              <Package
+                className="h-7 w-7"
+                style={{
+                  color: module.category?.color || '#6B7280',
+                }}
+              />
             </div>
-            <Badge variant="outline" className="bg-gray-50 text-xs">
-              {module.category?.name || 'Sans catégorie'}
-            </Badge>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h4 className="font-semibold text-gray-900 truncate text-lg">{module.name}</h4>
+                <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
+              </div>
+              <Badge variant="outline" className="bg-white/80 backdrop-blur text-xs border-gray-200">
+                {module.category?.name || 'Sans catégorie'}
+              </Badge>
+            </div>
           </div>
-        </div>
 
-        {/* Description */}
-        <p className="text-sm text-gray-600 mb-4 line-clamp-2">{module.description}</p>
+          {/* Description */}
+          <p className="text-sm text-gray-600 mb-6 line-clamp-2 flex-1">{module.description}</p>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-          <PlanBadge plan={(module as any).required_plan || 'gratuit'} />
-          <span className="text-xs text-gray-500">v{module.version}</span>
+          {/* Actions Footer */}
+          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100 mt-auto">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onDetails}
+              className="text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+            >
+              <Info className="h-4 w-4 mr-2" />
+              Détails
+            </Button>
+            <Button 
+              size="sm" 
+              onClick={onLaunch}
+              className="bg-[#2A9D8F] hover:bg-[#238276] text-white shadow-sm group-hover:shadow-md transition-all"
+            >
+              <Rocket className="h-4 w-4 mr-2" />
+              Lancer
+            </Button>
+          </div>
         </div>
       </Card>
     </motion.div>
@@ -167,7 +200,17 @@ const ModuleCard = ({ module, index }: { module: ModuleWithCategory; index: numb
 /**
  * Module Row pour vue liste
  */
-const ModuleRow = ({ module, index }: { module: ModuleWithCategory; index: number }) => {
+const ModuleRow = ({ 
+  module, 
+  index, 
+  onDetails,
+  onLaunch 
+}: { 
+  module: ModuleWithCategory; 
+  index: number; 
+  onDetails: () => void;
+  onLaunch: () => void;
+}) => {
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
@@ -179,7 +222,7 @@ const ModuleRow = ({ module, index }: { module: ModuleWithCategory; index: numbe
         <div className="flex items-center gap-4">
           {/* Icône */}
           <div
-            className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+            className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm"
             style={{
               backgroundColor: module.category?.color ? `${module.category.color}20` : '#E5E7EB',
             }}
@@ -201,13 +244,26 @@ const ModuleRow = ({ module, index }: { module: ModuleWithCategory; index: numbe
             <p className="text-sm text-gray-600 line-clamp-1">{module.description}</p>
           </div>
 
-          {/* Badges */}
+          {/* Actions */}
           <div className="flex items-center gap-3 flex-shrink-0">
-            <Badge variant="outline" className="bg-gray-50">
-              {module.category?.name || 'Sans catégorie'}
-            </Badge>
             <PlanBadge plan={(module as any).required_plan || 'gratuit'} />
-            <span className="text-xs text-gray-500 w-12 text-right">v{module.version}</span>
+            <div className="h-8 w-px bg-gray-200 mx-2" />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onDetails}
+              className="text-gray-500 hover:text-gray-900"
+            >
+              <Info className="h-4 w-4" />
+            </Button>
+            <Button 
+              size="sm" 
+              onClick={onLaunch}
+              className="bg-[#2A9D8F] hover:bg-[#238276] text-white"
+            >
+              <Rocket className="h-4 w-4 mr-2" />
+              Lancer
+            </Button>
           </div>
         </div>
       </Card>
@@ -225,6 +281,7 @@ export const MyGroupModules = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [selectedModule, setSelectedModule] = useState<ModuleWithCategory | null>(null);
 
   // Récupérer le groupe de l'utilisateur connecté
   const { data: currentGroup, isLoading: groupLoading, error: groupError } = useCurrentUserGroup();
@@ -260,6 +317,11 @@ export const MyGroupModules = () => {
 
     return filtered;
   }, [modulesData, searchQuery, categoryFilter]);
+
+  const handleLaunchModule = (module: ModuleWithCategory) => {
+    // Navigation vers le module (convention de nommage standard)
+    navigate(`/dashboard/modules/${module.slug}`);
+  };
 
   // Gestion des erreurs
   if (groupError) {
@@ -366,6 +428,70 @@ export const MyGroupModules = () => {
               badge="Total"
               delay={0.4}
             />
+          </div>
+
+          {/* Quick Actions Dock - "Opérations Fréquentes" (DYNAMIQUE) */}
+          <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+            <h2 className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wider flex items-center gap-2">
+              <Rocket className="h-4 w-4" />
+              Accès Rapide
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Logique de sélection dynamique des modules favoris */}
+              {(() => {
+                // 1. Définir les modules prioritaires à afficher s'ils sont disponibles
+                const prioritySlugs = ['gestion-inscriptions', 'finances', 'users', 'personnel'];
+                
+                // 2. Trouver les modules correspondants dans la liste des modules disponibles
+                const quickAccessModules = prioritySlugs
+                  .map(slug => modulesData?.availableModules?.find(m => m.slug === slug))
+                  .filter(Boolean) as ModuleWithCategory[];
+
+                // 3. Si on a moins de 4 modules, compléter avec d'autres modules disponibles
+                if (quickAccessModules.length < 4 && modulesData?.availableModules) {
+                  const otherModules = modulesData.availableModules
+                    .filter(m => !prioritySlugs.includes(m.slug))
+                    .slice(0, 4 - quickAccessModules.length);
+                  quickAccessModules.push(...otherModules);
+                }
+
+                // 4. Si aucun module n'est disponible (cas rare), afficher un message ou vide
+                if (quickAccessModules.length === 0) {
+                  return (
+                    <div className="col-span-4 text-center text-sm text-gray-400 py-2">
+                      Aucun module disponible pour l'accès rapide
+                    </div>
+                  );
+                }
+
+                // 5. Afficher les modules
+                return quickAccessModules.map((module) => (
+                  <Button
+                    key={module.id}
+                    variant="ghost"
+                    className="h-auto p-3 flex flex-col items-center gap-2 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all"
+                    onClick={() => handleLaunchModule(module)}
+                  >
+                    <div 
+                      className="w-10 h-10 rounded-full flex items-center justify-center"
+                      style={{
+                        backgroundColor: module.category?.color ? `${module.category.color}15` : '#F3F4F6',
+                      }}
+                    >
+                      <Package 
+                        className="h-5 w-5" 
+                        style={{
+                          color: module.category?.color || '#6B7280',
+                        }}
+                      />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 truncate w-full text-center">
+                      {module.name}
+                    </span>
+                  </Button>
+                ));
+              })()}
+            </div>
           </div>
 
           {/* Info Card Groupe */}
@@ -546,7 +672,13 @@ export const MyGroupModules = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <AnimatePresence>
                       {filteredModules.map((module, index) => (
-                        <ModuleCard key={module.id} module={module} index={index} />
+                        <ModuleCard 
+                          key={module.id} 
+                          module={module} 
+                          index={index} 
+                          onDetails={() => setSelectedModule(module)}
+                          onLaunch={() => handleLaunchModule(module)}
+                        />
                       ))}
                     </AnimatePresence>
                   </div>
@@ -557,7 +689,13 @@ export const MyGroupModules = () => {
                   <div className="space-y-3">
                     <AnimatePresence>
                       {filteredModules.map((module, index) => (
-                        <ModuleRow key={module.id} module={module} index={index} />
+                        <ModuleRow 
+                          key={module.id} 
+                          module={module} 
+                          index={index} 
+                          onDetails={() => setSelectedModule(module)}
+                          onLaunch={() => handleLaunchModule(module)}
+                        />
                       ))}
                     </AnimatePresence>
                   </div>
@@ -608,6 +746,15 @@ export const MyGroupModules = () => {
             } : null}
             isOpen={isDialogOpen}
             onClose={() => setIsDialogOpen(false)}
+            onUpgrade={() => setIsUpgradeDialogOpen(true)}
+          />
+
+          {/* Nouveau Dialog Détails Module */}
+          <ModuleDetailsDialog
+            module={selectedModule}
+            schoolGroupId={currentGroup.id}
+            isOpen={!!selectedModule}
+            onClose={() => setSelectedModule(null)}
           />
 
           {/* Dialog Demande d'upgrade */}

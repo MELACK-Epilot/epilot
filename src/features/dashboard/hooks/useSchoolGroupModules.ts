@@ -86,7 +86,7 @@ export const useSchoolGroupModules = (schoolGroupId?: string) => {
         throw new Error('Aucun plan trouvé dans la subscription');
       }
 
-      console.log('✅ Groupe trouvé:', schoolGroup.name);
+      console.log('✅ Groupe trouvé:', (schoolGroup as any).name);
       console.log('📋 Plan:', plan.name, '(' + plan.slug + ')');
       console.log('📋 Limites:', {
         écoles: plan.max_schools,
@@ -122,6 +122,10 @@ export const useSchoolGroupModules = (schoolGroupId?: string) => {
             name,
             slug,
             description,
+            version,
+            features,
+            documentation_url,
+            video_url,
             icon,
             required_plan,
             status,
@@ -136,7 +140,7 @@ export const useSchoolGroupModules = (schoolGroupId?: string) => {
         `)
         .eq('plan_id', planId)
         .eq('modules.status', 'active');
-
+      
       if (planModulesError) {
         console.error('❌ Erreur récupération plan_modules:', planModulesError);
         throw planModulesError;
@@ -147,6 +151,9 @@ export const useSchoolGroupModules = (schoolGroupId?: string) => {
       // 4. Mapper les modules avec leurs catégories
       const availableModules = (planModules || []).map((pm: any) => ({
         ...pm.modules,
+        // Mapping des champs snake_case vers camelCase pour le type Module
+        documentationUrl: pm.modules.documentation_url,
+        videoUrl: pm.modules.video_url,
         category: pm.modules.business_categories,
       }));
 
@@ -377,5 +384,39 @@ export const useModuleStatsByPlan = () => {
       };
     },
     staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+};
+
+/**
+ * Hook pour récupérer l'utilisation d'un module par école
+ */
+export const useModuleUsageBySchool = (schoolGroupId?: string, moduleId?: string) => {
+  return useQuery({
+    queryKey: ['module-usage-by-school', schoolGroupId, moduleId],
+    queryFn: async () => {
+      if (!schoolGroupId || !moduleId) return [];
+
+      const { data, error } = await supabase
+        .rpc('get_module_usage_by_school', {
+          p_school_group_id: schoolGroupId,
+          p_module_id: moduleId
+        } as any);
+
+      if (error) {
+        console.error('❌ Erreur récupération usage module:', error);
+        throw error;
+      }
+
+      return data as {
+        school_id: string;
+        school_name: string;
+        city: string;
+        student_count: number;
+        active_users_count: number;
+        last_active_at: string | null;
+      }[];
+    },
+    enabled: !!schoolGroupId && !!moduleId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };

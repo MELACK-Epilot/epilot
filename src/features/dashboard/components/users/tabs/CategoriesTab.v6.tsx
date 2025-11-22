@@ -29,7 +29,7 @@ interface CategoriesTabProps {
     lastName: string;
     email: string;
     role: string;
-    schoolGroupId: string;
+    schoolGroupId?: string;
   };
   assignedModuleIds: Set<string>;
   onAssignSuccess: () => void;

@@ -274,15 +274,17 @@ export const UsersPermissionsView = ({
       />
 
       {/* Modals */}
-      <UserModulesDialog
-        user={selectedUser}
-        isOpen={dialogOpen}
-        onClose={() => {
-          setDialogOpen(false);
-          setSelectedUser(null);
-          onRefresh();
-        }}
-      />
+      {selectedUser && (
+        <UserModulesDialog
+          user={selectedUser}
+          isOpen={dialogOpen}
+          onClose={() => {
+            setDialogOpen(false);
+            setSelectedUser(null);
+            onRefresh();
+          }}
+        />
+      )}
 
       <ViewPermissionsDialog
         user={userForViewPermissions}
