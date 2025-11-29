@@ -30,7 +30,7 @@ export const useRecentActivity = () => {
 
       try {
         // Récupérer les logs d'activité des dernières 24h
-        const { data: logs, error } = await supabase
+        const { data: logs, error } = await (supabase as any)
           .from('activity_logs')
           .select('*')
           .eq('school_group_id', user.schoolGroupId)
@@ -53,9 +53,9 @@ export const useRecentActivity = () => {
           
           return {
             id: log.id,
-            type: mapActionToType(log.action),
-            title: formatTitle(log.action, log.entity_type),
-            description: log.description || formatDescription(log),
+            type: mapActionToType(log.action || log.entity),
+            title: formatTitle(log.action, log.entity),
+            description: log.details || log.description || formatDescription(log),
             time: timeAgo,
             status: mapActionToStatus(log.action),
             created_at: log.created_at,

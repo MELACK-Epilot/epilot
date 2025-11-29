@@ -39,8 +39,8 @@ export const RecentActivityFeed = () => {
   };
 
   return (
-    <Card className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <Card className="p-6 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-gray-900">Activité Récente</h3>
         <Badge variant="outline" className="text-xs">
           Dernières 24h
@@ -60,13 +60,13 @@ export const RecentActivityFeed = () => {
           ))}
         </div>
       ) : activities.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-gray-500 flex-1 flex flex-col items-center justify-center">
           <Clock className="w-12 h-12 mx-auto mb-3 text-gray-300" />
           <p className="text-sm font-semibold">Aucune activité récente</p>
           <p className="text-xs mt-1">Les actions apparaîtront ici</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 flex-1 overflow-auto">
           {activities.map((activity, index) => {
             const Icon = getIcon(activity.type);
             return (

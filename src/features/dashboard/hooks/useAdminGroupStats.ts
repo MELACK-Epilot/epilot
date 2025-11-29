@@ -21,16 +21,32 @@ const fetchAdminGroupStats = async (schoolGroupId: string): Promise<AdminGroupSt
       .select('id', { count: 'exact', head: true })
       .eq('school_group_id', schoolGroupId);
 
-    // 2. Récupérer student_count et staff_count de toutes les écoles
-    const { data: schoolsData } = await supabase
+    // 2. Récupérer les IDs des écoles du groupe
+    const { data: schoolIds } = await supabase
       .from('schools')
-      .select('student_count, staff_count, created_at')
+      .select('id')
       .eq('school_group_id', schoolGroupId);
 
-    const totalStudents = schoolsData?.reduce((sum, s: any) => sum + (s.student_count || 0), 0) || 0;
-    const totalStaff = schoolsData?.reduce((sum, s: any) => sum + (s.staff_count || 0), 0) || 0;
+    // 3. Compter les élèves (table students liée aux écoles du groupe)
+    let totalStudents = 0;
+    if (schoolIds && schoolIds.length > 0) {
+      const { count } = await supabase
+        .from('students')
+        .select('id', { count: 'exact', head: true })
+        .in('school_id', schoolIds.map(s => s.id));
+      totalStudents = count || 0;
+    }
 
-    // 3. Compter les utilisateurs actifs du groupe
+    // 4. Compter le personnel (utilisateurs du groupe sauf admin_groupe)
+    const { count: staffCount } = await supabase
+      .from('users')
+      .select('id', { count: 'exact', head: true })
+      .eq('school_group_id', schoolGroupId)
+      .eq('status', 'active')
+      .neq('role', 'admin_groupe');
+    const totalStaff = staffCount || 0;
+
+    // 5. Compter les utilisateurs actifs du groupe
     const { count: activeUsers } = await supabase
       .from('users')
       .select('id', { count: 'exact', head: true })
@@ -56,16 +72,26 @@ const fetchAdminGroupStats = async (schoolGroupId: string): Promise<AdminGroupSt
       .eq('status', 'active')
       .lt('created_at', lastMonth.toISOString());
 
-    // Récupérer les données historiques pour élèves/personnel (si disponible)
-    // TODO: Implémenter table school_history pour tracking précis
-    const { data: schoolsLastMonthData } = await supabase
-      .from('schools')
-      .select('student_count, staff_count')
+    // Personnel le mois dernier (utilisateurs sauf admin_groupe)
+    const { count: staffLastMonthCount } = await supabase
+      .from('users')
+      .select('id', { count: 'exact', head: true })
       .eq('school_group_id', schoolGroupId)
+      .eq('status', 'active')
+      .neq('role', 'admin_groupe')
       .lt('created_at', lastMonth.toISOString());
+    const staffLastMonth = staffLastMonthCount || 0;
 
-    const studentsLastMonth = schoolsLastMonthData?.reduce((sum, s: any) => sum + (s.student_count || 0), 0) || 0;
-    const staffLastMonth = schoolsLastMonthData?.reduce((sum, s: any) => sum + (s.staff_count || 0), 0) || 0;
+    // Élèves le mois dernier (si table students existe)
+    let studentsLastMonth = 0;
+    if (schoolIds && schoolIds.length > 0) {
+      const { count } = await supabase
+        .from('students')
+        .select('id', { count: 'exact', head: true })
+        .in('school_id', schoolIds.map(s => s.id))
+        .lt('created_at', lastMonth.toISOString());
+      studentsLastMonth = count || 0;
+    }
 
     // Fonction de calcul de tendance
     const calculateTrend = (current: number, previous: number): number => {

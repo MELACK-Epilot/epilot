@@ -1,10 +1,11 @@
 /**
  * Hook pour récupérer les alertes du groupe
  * Utilise system_alerts et données financières
+ * Inclut: useGroupAlerts, useDismissAlert, useAlertHistory
  * @module useGroupAlerts
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/features/auth/store/auth.store';
 
@@ -32,14 +33,14 @@ export const useGroupAlerts = () => {
 
       try {
         // 1. Vérifier les paiements en retard
-        const { data: overduePayments, error: paymentError } = await supabase
+        const { data: overduePayments, error: paymentError } = await (supabase as any)
           .from('fee_payments')
           .select('amount, school_id')
           .eq('status', 'pending')
           .lt('due_date', new Date().toISOString());
 
         if (!paymentError && overduePayments && overduePayments.length > 0) {
-          const totalOverdue = overduePayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+          const totalOverdue = overduePayments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
           alerts.push({
             id: 'overdue-payments',
             type: 'critical',
@@ -70,14 +71,14 @@ export const useGroupAlerts = () => {
           });
         }
 
-        // 3. Vérifier les alertes système
-        const { data: systemAlerts, error: alertError } = await supabase
+        // 3. Vérifier les alertes système non résolues
+        const { data: systemAlerts, error: alertError } = await (supabase as any)
           .from('system_alerts')
           .select('*')
           .eq('school_group_id', user.schoolGroupId)
-          .eq('is_read', false)
+          .is('resolved_at', null)
           .order('created_at', { ascending: false })
-          .limit(3);
+          .limit(5);
 
         if (!alertError && systemAlerts && systemAlerts.length > 0) {
           systemAlerts.forEach((alert: any) => {
@@ -87,8 +88,8 @@ export const useGroupAlerts = () => {
               icon: 'AlertCircle',
               title: alert.title,
               description: alert.message,
-              action: 'Consulter',
-              href: '/dashboard/activity-logs',
+              action: alert.action_label || 'Consulter',
+              href: alert.action_url || '/dashboard/schools',
             });
           });
         }
@@ -111,3 +112,59 @@ function mapSeverityToType(severity: string): GroupAlert['type'] {
   if (severity === 'warning') return 'warning';
   return 'info';
 }
+
+/**
+ * Hook pour supprimer (résoudre) une alerte
+ */
+export const useDismissAlert = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (alertId: string) => {
+      const { error } = await (supabase as any)
+        .from('system_alerts')
+        .update({ resolved_at: new Date().toISOString() })
+        .eq('id', alertId);
+
+      if (error) throw error;
+      return alertId;
+    },
+    onSuccess: () => {
+      // Invalider les alertes pour rafraîchir
+      queryClient.invalidateQueries({ queryKey: ['group-alerts', user?.schoolGroupId] });
+      queryClient.invalidateQueries({ queryKey: ['alert-history', user?.schoolGroupId] });
+    },
+  });
+};
+
+/**
+ * Hook pour récupérer l'historique des alertes résolues
+ */
+export const useAlertHistory = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['alert-history', user?.schoolGroupId],
+    queryFn: async () => {
+      if (!user?.schoolGroupId) return [];
+
+      const { data, error } = await (supabase as any)
+        .from('system_alerts')
+        .select('id, title, message, severity, resolved_at, created_at')
+        .eq('school_group_id', user.schoolGroupId)
+        .not('resolved_at', 'is', null)
+        .order('resolved_at', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error('Erreur useAlertHistory:', error);
+        return [];
+      }
+
+      return data || [];
+    },
+    enabled: !!user?.schoolGroupId && user?.role === 'admin_groupe',
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};

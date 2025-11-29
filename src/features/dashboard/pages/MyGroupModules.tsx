@@ -12,7 +12,6 @@ import {
   Layers,
   TrendingUp,
   AlertCircle,
-  Loader2,
   Home,
   ChevronRight,
   Search,
@@ -381,12 +380,20 @@ export const MyGroupModules = () => {
         </div>
       </div>
 
-      {/* Loading State */}
+      {/* Loading State - Skeleton rapide */}
       {isLoading && (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <Loader2 className="h-12 w-12 text-[#2A9D8F] animate-spin mx-auto mb-4" />
-            <p className="text-gray-600 font-medium">Chargement ultra-rapide...</p>
+        <div className="space-y-6 animate-pulse">
+          {/* Stats Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-32 bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl" />
+            ))}
+          </div>
+          {/* Cards Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-48 bg-gray-200 rounded-xl" />
+            ))}
           </div>
         </div>
       )}
@@ -438,7 +445,8 @@ export const MyGroupModules = () => {
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {(() => {
-                const prioritySlugs = ['gestion-inscriptions', 'finances', 'users', 'personnel'];
+                // Slugs réels des modules prioritaires
+                const prioritySlugs = ['gestion-inscriptions', 'frais-scolarite', 'gestion-utilisateurs', 'notes-evaluations'];
                 const quickAccessModules = prioritySlugs
                   .map(slug => allModules.find(m => m.slug === slug))
                   .filter(Boolean) as DisplayModule[];

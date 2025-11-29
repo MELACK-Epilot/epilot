@@ -14,6 +14,10 @@ import { Card } from '@/components/ui/card';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { useAdminGroupStats } from '../hooks/useAdminGroupStats';
 
+import { useSmartRecommendations } from '../hooks/useSmartRecommendations';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+
 // Variantes d'animation
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -37,6 +41,10 @@ const itemVariants = {
 
 export default function GroupDashboard() {
   const { data: stats } = useAdminGroupStats();
+  const recommendation = useSmartRecommendations();
+  const navigate = useNavigate();
+
+  const RecommendationIcon = recommendation?.icon || TrendingUp;
 
   return (
     <div className="min-h-screen bg-[#F9F9F9]">
@@ -66,15 +74,15 @@ export default function GroupDashboard() {
           <QuickActionsGrid />
         </motion.div>
 
-        {/* Activité et Alertes */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Activité Récente - 2/3 */}
-          <motion.div variants={itemVariants} className="lg:col-span-2">
+        {/* Activité et Alertes - Disposition 50/50 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Activité Récente - 50% */}
+          <motion.div variants={itemVariants} className="min-h-[400px]">
             <RecentActivityFeed />
           </motion.div>
 
-          {/* Alertes - 1/3 */}
-          <motion.div variants={itemVariants}>
+          {/* Alertes - 50% */}
+          <motion.div variants={itemVariants} className="min-h-[400px]">
             <AlertsWidget />
           </motion.div>
         </div>
@@ -116,35 +124,53 @@ export default function GroupDashboard() {
             </div>
           </Card>
 
-          {/* Recommandation Intelligente */}
-          <Card className="p-6 bg-gradient-to-br from-[#1D3557]/5 to-white border border-[#1D3557]/10 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-[#1D3557] rounded-xl shadow-lg text-white">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-[#1D3557] mb-1">
-                  Recommandation
-                </h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  {(stats?.totalSchools || 0) < 3 
-                    ? "Ajoutez plus d'écoles pour développer votre groupe"
-                    : (stats?.totalStudents || 0) / (stats?.totalStaff || 1) > 30
-                    ? "Envisagez de recruter plus de personnel (ratio élèves/staff élevé)"
-                    : "Excellent équilibre ! Continuez à optimiser vos processus"
-                  }
-                </p>
-                <div className="flex items-center gap-3 text-xs text-gray-600">
-                  <div className="px-2 py-1 bg-[#1D3557]/10 rounded text-[#1D3557]">
-                    <span className="font-semibold">{stats?.totalSchools || 0}</span> écoles
+          {/* Recommandation Intelligente Dynamique */}
+          {recommendation && (
+            <Card className="p-6 bg-gradient-to-br from-[#1D3557]/5 to-white border border-[#1D3557]/10 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+              {/* Fond animé */}
+              <div className="absolute -right-10 -top-10 w-32 h-32 bg-[#1D3557]/5 rounded-full blur-2xl group-hover:bg-[#1D3557]/10 transition-colors duration-500" />
+              
+              <div className="relative flex flex-col h-full">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className={`p-3 rounded-xl shadow-lg text-white ${
+                    recommendation.type === 'critical' ? 'bg-[#E63946]' :
+                    recommendation.type === 'warning' ? 'bg-[#E9C46A]' :
+                    recommendation.type === 'growth' ? 'bg-[#2A9D8F]' :
+                    'bg-[#1D3557]'
+                  }`}>
+                    <RecommendationIcon className="w-6 h-6" />
                   </div>
-                  <div className="px-2 py-1 bg-[#1D3557]/10 rounded text-[#1D3557]">
-                    Ratio: <span className="font-semibold">{((stats?.totalStudents || 0) / (stats?.totalStaff || 1)).toFixed(1)}</span> élèves/staff
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-lg font-bold text-[#1D3557]">
+                        {recommendation.title}
+                      </h3>
+                      {recommendation.metric && (
+                        <span className="px-2 py-0.5 rounded-full bg-white border border-gray-100 text-xs font-bold text-gray-600 shadow-sm">
+                          {recommendation.metric}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {recommendation.message}
+                    </p>
                   </div>
                 </div>
+
+                <div className="mt-auto flex justify-end pt-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => navigate(recommendation.route)}
+                    className="text-[#1D3557] border-[#1D3557]/20 hover:bg-[#1D3557]/5 gap-2 group-hover:border-[#1D3557]/40 transition-all"
+                  >
+                    {recommendation.action}
+                    <TrendingUp className="w-3 h-3" />
+                  </Button>
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          )}
         </motion.div>
       </motion.div>
     </div>
