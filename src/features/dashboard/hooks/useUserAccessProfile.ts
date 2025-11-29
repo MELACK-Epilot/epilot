@@ -50,10 +50,10 @@ export const useUserAccessProfile = (userId: string | undefined) => {
     queryFn: async () => {
       if (!userId) return null;
 
-      // 1. Récupérer l'utilisateur avec son profil
+      // 1. Récupérer l'utilisateur avec son profil et son groupe
       const { data: user, error: userError } = await supabase
         .from('users')
-        .select('id, access_profile_code, role')
+        .select('id, access_profile_code, role, school_group_id')
         .eq('id', userId)
         .single();
 
@@ -75,12 +75,22 @@ export const useUserAccessProfile = (userId: string | undefined) => {
         return null;
       }
 
-      // 3. Récupérer le profil d'accès
-      const { data: profile, error: profileError } = await supabase
+      // 3. Récupérer le profil d'accès (priorité: groupe > template)
+      let query = supabase
         .from('access_profiles')
         .select('*')
         .eq('code', userData.access_profile_code)
-        .single();
+        .eq('is_active', true);
+      
+      // Filtrer par groupe si l'utilisateur en a un
+      if (userData.school_group_id) {
+        query = query.eq('school_group_id', userData.school_group_id);
+      } else {
+        // Sinon prendre le template
+        query = query.eq('is_template', true);
+      }
+      
+      const { data: profile, error: profileError } = await query.single();
 
       if (profileError) {
         console.error('❌ Erreur récupération profil:', profileError);

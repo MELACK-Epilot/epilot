@@ -77,14 +77,22 @@ export const getRoleColor = (code: string): RoleColorScheme => {
 
 /**
  * Calcule le nombre de modules activés pour un profil
- * Ignore les domaines legacy et 'scope'
+ * Compte les permissions avec valeur true OU 'read_only'
+ * Ignore 'scope' et les objets legacy (finances, pedagogie, etc.)
  */
 export const countActiveModules = (permissions: Record<string, unknown> | null): number => {
   if (!permissions) return 0;
   
-  return Object.entries(permissions).filter(
-    ([key, value]) => value === true && key !== 'scope'
-  ).length;
+  // Liste des clés legacy à ignorer (anciens objets de permissions)
+  const legacyKeys = ['scope', 'finances', 'pedagogie', 'statistiques', 'vie_scolaire', 'administration'];
+  
+  return Object.entries(permissions).filter(([key, value]) => {
+    // Ignorer les clés legacy
+    if (legacyKeys.includes(key)) return false;
+    
+    // Compter si la valeur est true ou 'read_only' (accès en lecture)
+    return value === true || value === 'read_only';
+  }).length;
 };
 
 /**

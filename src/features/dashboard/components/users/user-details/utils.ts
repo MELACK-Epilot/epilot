@@ -27,19 +27,36 @@ export const getRoleLabel = (role: string): string => {
 };
 
 /**
- * Retourne le libellé français d'un profil d'accès
+ * Labels par défaut des profils d'accès (synchronisés avec les templates BDD)
+ * Ces labels correspondent aux name_fr des profils templates
  */
-export const getProfileLabel = (code: string | null | undefined): string => {
+const DEFAULT_PROFILE_LABELS: Record<string, string> = {
+  chef_etablissement: "Chef d'Établissement",
+  financier_sans_suppression: 'Comptable/Économe',
+  administratif_basique: 'Secrétaire',
+  enseignant_saisie_notes: 'Enseignant',
+  parent_consultation: 'Parent',
+  eleve_consultation: 'Élève',
+};
+
+/**
+ * Retourne le libellé français d'un profil d'accès
+ * @param code - Code du profil
+ * @param profilesMap - Map optionnelle des profils depuis la BDD pour labels dynamiques
+ */
+export const getProfileLabel = (
+  code: string | null | undefined, 
+  profilesMap?: Map<string, { name_fr: string }>
+): string => {
   if (!code) return 'Aucun profil';
-  const labels: Record<string, string> = {
-    chef_etablissement: "Chef d'Établissement",
-    financier_sans_suppression: 'Financier',
-    administratif_basique: 'Administratif',
-    enseignant_saisie_notes: 'Enseignant',
-    parent_consultation: 'Parent',
-    eleve_consultation: 'Élève',
-  };
-  return labels[code] || code;
+  
+  // Si une map dynamique est fournie, l'utiliser en priorité
+  if (profilesMap?.has(code)) {
+    return profilesMap.get(code)!.name_fr;
+  }
+  
+  // Sinon, utiliser les labels par défaut
+  return DEFAULT_PROFILE_LABELS[code] || code;
 };
 
 /**

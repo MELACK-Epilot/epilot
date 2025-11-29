@@ -170,9 +170,10 @@ export const useAccessProfilesStore = create<AccessProfilesState>()(
 );
 
 /**
- * Hook pour récupérer un profil spécifique
+ * Hook pour récupérer un profil spécifique depuis le store (par code)
+ * @deprecated Utiliser useAccessProfile ou useAccessProfileByCode de useAccessProfiles.ts
  */
-export const useAccessProfile = (code: string) => {
+export const useAccessProfileFromStore = (code: string) => {
   const profile = useAccessProfilesStore(state => 
     state.profiles.find(p => p.code === code)
   );

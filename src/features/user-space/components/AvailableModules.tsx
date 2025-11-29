@@ -6,15 +6,12 @@
  * @module AvailableModules
  */
 
-import { memo, Suspense, useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Package,
   Sparkles,
-  TrendingUp,
-  Clock,
-  CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -36,8 +33,6 @@ const ModuleCard = memo(({
   module: AssignedModule; 
   index: number;
 }) => {
-  const category = module.category;
-
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -51,7 +46,7 @@ const ModuleCard = memo(({
       <Link to={`/user/modules/${module.slug}`}>
         <Card className="group relative p-4 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer border-2 border-transparent hover:border-[#2A9D8F] overflow-hidden">
           {/* Badge Core (si applicable) */}
-          {module.is_core && (
+          {module.isCore && (
             <div className="absolute top-2 right-2">
               <Badge 
                 variant="secondary" 
@@ -90,17 +85,10 @@ const ModuleCard = memo(({
               </p>
               
               {/* Badge catégorie */}
-              {category && (
+              {module.categoryName && (
                 <div className="flex items-center gap-1.5 mt-2">
-                  {getLucideIcon(category.icon, {
-                    className: "h-3.5 w-3.5 flex-shrink-0",
-                    style: { color: category.color }
-                  })}
-                  <span 
-                    className="text-xs font-medium truncate"
-                    style={{ color: category.color }}
-                  >
-                    {category.name}
+                  <span className="text-xs font-medium truncate text-gray-500">
+                    {module.categoryName}
                   </span>
                 </div>
               )}
@@ -222,7 +210,7 @@ export const AvailableModules = () => {
               Erreur de chargement des modules
             </h3>
             <p className="text-sm text-red-700">
-              {error instanceof Error ? error.message : 'Une erreur est survenue'}
+              {typeof error === 'string' ? error : 'Une erreur est survenue'}
             </p>
           </div>
         </div>
@@ -272,7 +260,7 @@ export const AvailableModules = () => {
           >
             {modules.map((module, index) => (
               <ModuleCard 
-                key={module.module_id} 
+                key={module.id || index} 
                 module={module} 
                 index={index}
               />

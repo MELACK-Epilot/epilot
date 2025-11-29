@@ -79,7 +79,7 @@ import { StaffManagementPage } from './features/user-space/pages/StaffManagement
 import { SchoolReportsPage } from './features/user-space/pages/SchoolReportsPage';
 import { AdvancedStatsPage } from './features/user-space/pages/AdvancedStatsPage';
 import { ProtectedModuleRoute } from './components/ProtectedModuleRoute';
-import { UserPermissionsProvider } from './contexts/UserPermissionsProvider';
+// UserPermissionsProvider supprimé - PermissionsProvider global suffit
 
 function App() {
   // Valider les variables d'environnement au démarrage
@@ -258,11 +258,10 @@ function App() {
           </Route>
           
           {/* Routes Espace Utilisateur École - Tous les rôles utilisateur + admin_groupe */}
+          {/* Note: PermissionsProvider global gère déjà les modules */}
           <Route path="/user" element={
             <ProtectedRoute roles={[...USER_ROLES, 'admin_groupe']}>
-              <UserPermissionsProvider>
-                <UserSpaceLayout />
-              </UserPermissionsProvider>
+              <UserSpaceLayout />
             </ProtectedRoute>
           }>
             <Route index element={<UserDashboard />} />

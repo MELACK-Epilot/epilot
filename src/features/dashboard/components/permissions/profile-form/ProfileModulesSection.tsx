@@ -16,8 +16,8 @@ import { ModuleCategoryCard } from './ModuleCategoryCard';
 
 interface ProfileModulesSectionProps {
   categories: Category[] | undefined;
-  permissions: Record<string, boolean>;
-  setPermissions: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  permissions: Record<string, boolean | 'read_only'>;
+  setPermissions: React.Dispatch<React.SetStateAction<Record<string, boolean | 'read_only'>>>;
   activeCount: number;
   isLoading: boolean;
 }

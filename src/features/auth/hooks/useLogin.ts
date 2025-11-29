@@ -1,22 +1,49 @@
 /**
  * Hook personnalisé pour la gestion de la connexion
+ * 
+ * ✅ OPTIMISÉ pour 8000+ utilisateurs
+ * - Utilise RPC get_user_login_data() pour une seule requête DB
+ * - Gestion des erreurs robuste
+ * - Redirection intelligente selon rôle + profil
+ * 
  * @module useLogin
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/auth.store';
-import type { LoginCredentials } from '../types/auth.types';
+import type { LoginCredentials, User } from '../types/auth.types';
 import { saveAuthToIndexedDB, clearAuthFromIndexedDB } from '../utils/auth.db';
 import { supabase } from '@/lib/supabase';
 
-/**
- * Pas de conversion nécessaire - on utilise les rôles directement depuis la BDD
- * Les rôles sont gérés par la configuration centralisée dans config/roles.ts
- */
+/** Constantes pour les messages d'erreur */
+const ERROR_MESSAGES = {
+  INVALID_CREDENTIALS: 'Email ou mot de passe incorrect',
+  EMAIL_NOT_CONFIRMED: 'Veuillez confirmer votre email avant de vous connecter',
+  TOO_MANY_REQUESTS: 'Trop de tentatives. Réessayez dans quelques minutes',
+  USER_NOT_FOUND: 'Utilisateur introuvable',
+  ACCOUNT_INACTIVE: 'Votre compte n\'est pas actif. Contactez l\'administrateur',
+  PROFILE_ERROR: 'Erreur lors de la récupération du profil',
+  UNKNOWN_ERROR: 'Erreur de connexion',
+  VALIDATION_ERROR: 'Email et mot de passe requis',
+} as const;
+
+/** Interface pour la réponse RPC */
+interface LoginRpcResponse {
+  success: boolean;
+  error?: string;
+  message?: string;
+  user?: User;
+  meta?: {
+    modulesCount: number;
+    hasAccessProfile: boolean;
+    isAdmin: boolean;
+  };
+}
 
 /**
  * Hook pour gérer la connexion utilisateur
+ * Optimisé pour la performance avec 8000+ utilisateurs
  */
 export const useLogin = () => {
   const navigate = useNavigate();
@@ -26,116 +53,128 @@ export const useLogin = () => {
   const { setUser, setToken } = useAuthStore();
 
   /**
-   * Fonction de connexion avec Supabase Auth
+   * Traduit les erreurs Supabase Auth en messages utilisateur
    */
-  const login = async (credentials: LoginCredentials) => {
+  const translateAuthError = useCallback((errorMessage: string): string => {
+    switch (errorMessage) {
+      case 'Invalid login credentials':
+        return ERROR_MESSAGES.INVALID_CREDENTIALS;
+      case 'Email not confirmed':
+        return ERROR_MESSAGES.EMAIL_NOT_CONFIRMED;
+      case 'Too many requests':
+        return ERROR_MESSAGES.TOO_MANY_REQUESTS;
+      default:
+        return errorMessage || ERROR_MESSAGES.UNKNOWN_ERROR;
+    }
+  }, []);
+
+  /**
+   * Fonction de connexion avec Supabase Auth
+   * ✅ Optimisée avec RPC pour une seule requête DB
+   */
+  const login = useCallback(async (credentials: LoginCredentials) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Validation basique
-      if (!credentials.email || !credentials.password) {
-        throw new Error('Email et mot de passe requis');
+      // ============================================
+      // ÉTAPE 1: Validation des entrées
+      // ============================================
+      if (!credentials.email?.trim() || !credentials.password) {
+        throw new Error(ERROR_MESSAGES.VALIDATION_ERROR);
       }
 
-      // Connexion avec Supabase Auth
+      // ============================================
+      // ÉTAPE 2: Authentification Supabase
+      // ============================================
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: credentials.email,
+        email: credentials.email.trim().toLowerCase(),
         password: credentials.password,
       });
 
       if (authError) {
-        // Gestion des erreurs Supabase
-        switch (authError.message) {
-          case 'Invalid login credentials':
-            throw new Error('Email ou mot de passe incorrect');
-          case 'Email not confirmed':
-            throw new Error('Veuillez confirmer votre email avant de vous connecter');
-          case 'Too many requests':
-            throw new Error('Trop de tentatives. Réessayez dans quelques minutes');
+        throw new Error(translateAuthError(authError.message));
+      }
+
+      if (!authData.user) {
+        throw new Error(ERROR_MESSAGES.USER_NOT_FOUND);
+      }
+
+      // ============================================
+      // ÉTAPE 3: Récupérer les données via RPC optimisée
+      // ============================================
+      const { data: rpcData, error: rpcError } = await (supabase as any)
+        .rpc('get_user_login_data', { p_user_id: authData.user.id });
+
+      if (rpcError) {
+        console.error('RPC Error:', rpcError);
+        throw new Error(ERROR_MESSAGES.PROFILE_ERROR);
+      }
+
+      const response = rpcData as LoginRpcResponse;
+
+      // Vérifier la réponse RPC
+      if (!response || !response.success) {
+        const errorCode = response?.error;
+        switch (errorCode) {
+          case 'USER_NOT_FOUND':
+            throw new Error(ERROR_MESSAGES.USER_NOT_FOUND);
+          case 'ACCOUNT_INACTIVE':
+            throw new Error(ERROR_MESSAGES.ACCOUNT_INACTIVE);
           default:
-            throw new Error(authError.message || 'Erreur de connexion');
+            throw new Error(response?.message || ERROR_MESSAGES.PROFILE_ERROR);
         }
       }
 
-      // Vérifier que l'utilisateur existe
-      if (!authData.user) {
-        throw new Error('Utilisateur introuvable');
+      if (!response.user) {
+        throw new Error(ERROR_MESSAGES.USER_NOT_FOUND);
       }
 
-      // Récupérer les données utilisateur depuis la table users
-      const { data: profileData, error: profileError } = await supabase
-        .from('users')
-        .select(`
-          *,
-          school_groups(name, logo)
-        `)
-        .eq('id', authData.user.id)
-        .single();
-
-      if (profileError) {
-        console.error('Profile data error:', profileError);
-        throw new Error('Erreur lors de la récupération du profil: ' + profileError.message);
-      }
-
-      if (!profileData) {
-        throw new Error('Aucun profil trouvé');
-      }
-
-      // Cast pour éviter les erreurs TypeScript avec les types auto-générés
-      const profile = profileData as any;
-
-      // Vérifier que le compte est actif
-      if (profile.status !== 'active') {
-        throw new Error('Votre compte n\'est pas actif. Contactez l\'administrateur');
-      }
-
-      // Construire l'objet utilisateur
-      const schoolGroup = profile.school_groups as { name: string; logo: string } | null;
-      const user = {
-        id: profile.id,
-        email: profile.email,
-        firstName: profile.first_name || 'Utilisateur',
-        lastName: profile.last_name || '',
-        role: profile.role, // ✅ Utiliser le rôle directement depuis la BDD
-        avatar: profile.avatar || undefined,
-        gender: profile.gender || undefined,
-        dateOfBirth: profile.date_of_birth || undefined,
-        phone: profile.phone || undefined,
-        schoolGroupId: profile.school_group_id || undefined,
-        schoolGroupName: schoolGroup?.name || undefined,
-        schoolGroupLogo: schoolGroup?.logo || undefined,
-        schoolId: profile.school_id || undefined,
-        createdAt: profile.created_at,
-        lastLogin: profile.last_login || undefined,
+      // ============================================
+      // ÉTAPE 4: Construire l'objet utilisateur
+      // ============================================
+      const user: User = {
+        id: response.user.id,
+        email: response.user.email,
+        firstName: response.user.firstName || 'Utilisateur',
+        lastName: response.user.lastName || '',
+        role: response.user.role,
+        avatar: response.user.avatar,
+        gender: response.user.gender,
+        dateOfBirth: response.user.dateOfBirth,
+        phone: response.user.phone,
+        schoolGroupId: response.user.schoolGroupId,
+        schoolGroupName: response.user.schoolGroupName,
+        schoolGroupLogo: response.user.schoolGroupLogo,
+        schoolId: response.user.schoolId,
+        createdAt: response.user.createdAt,
+        lastLogin: response.user.lastLogin,
+        accessProfileCode: response.user.accessProfileCode,
+        accessProfileName: response.user.accessProfileName,
       };
 
       // 🔍 Debug: Afficher les infos de connexion
-      console.log('🔐 Login Success:', {
-        email: user.email,
-        role: user.role,
-        schoolGroupId: user.schoolGroupId,
-        schoolId: user.schoolId,
-        isAdmin: user.role === 'super_admin' || user.role === 'admin_groupe',
-      });
+      if (import.meta.env.DEV) {
+        console.log('🔐 Login Success:', {
+          email: user.email,
+          role: user.role,
+          accessProfileCode: user.accessProfileCode,
+          modulesCount: response.meta?.modulesCount,
+          isAdmin: response.meta?.isAdmin,
+          hasProfile: response.meta?.hasAccessProfile,
+        });
+      }
 
-      // Mettre à jour le store Zustand
-      const { setUser, setToken } = useAuthStore.getState();
-      setToken(authData.session?.access_token || '', authData.session?.refresh_token);
-      setUser(user);
+      // ============================================
+      // ÉTAPE 5: Mettre à jour le store Zustand
+      // ============================================
+      const store = useAuthStore.getState();
+      store.setToken(authData.session?.access_token || '', authData.session?.refresh_token);
+      store.setUser(user);
 
-      // 🔍 DEBUG: Vérifier l'état du store après mise à jour
-      await new Promise(resolve => setTimeout(resolve, 100)); // Attendre 100ms
-      const storeState = useAuthStore.getState();
-      console.log('🔐 Store après connexion:', {
-        user: storeState.user ? 'présent' : 'absent',
-        email: storeState.user?.email,
-        role: storeState.user?.role,
-        isAuthenticated: storeState.isAuthenticated,
-        token: storeState.token ? 'présent' : 'absent',
-      });
-
-      // Sauvegarder dans IndexedDB si "Se souvenir de moi"
+      // ============================================
+      // ÉTAPE 6: Persistance IndexedDB (si "Se souvenir")
+      // ============================================
       if (credentials.rememberMe) {
         await saveAuthToIndexedDB({
           email: credentials.email,
@@ -147,16 +186,29 @@ export const useLogin = () => {
           createdAt: Date.now(),
         });
       } else {
-        // Nettoyer IndexedDB si non coché
         await clearAuthFromIndexedDB();
       }
 
-      // Redirection vers le dashboard
-      navigate('/dashboard', { replace: true });
+      // ============================================
+      // ÉTAPE 7: Redirection intelligente
+      // ============================================
+      const isAdmin = response.meta?.isAdmin ?? false;
+      const hasAccessProfile = response.meta?.hasAccessProfile ?? false;
+
+      if (isAdmin) {
+        console.log('🔄 Redirection Admin → /dashboard');
+        navigate('/dashboard', { replace: true });
+      } else if (hasAccessProfile) {
+        console.log('🔄 Redirection Utilisateur avec profil → /user');
+        navigate('/user', { replace: true });
+      } else {
+        console.log('🔄 Redirection Utilisateur sans profil → / (ProfilePendingPage)');
+        navigate('/', { replace: true });
+      }
 
       return { success: true };
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
+      const errorMessage = err instanceof Error ? err.message : ERROR_MESSAGES.UNKNOWN_ERROR;
       setError(errorMessage);
       console.error('Login error:', err);
 
@@ -164,7 +216,7 @@ export const useLogin = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [navigate, translateAuthError]);
 
   /**
    * Connexion avec mock (pour développement)

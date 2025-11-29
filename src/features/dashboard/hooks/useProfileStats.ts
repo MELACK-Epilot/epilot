@@ -63,54 +63,42 @@ export const useProfileStats = (): ProfileStatsResult => {
     queryKey: profileStatsKeys.group(schoolGroupId || ''),
     queryFn: async () => {
       if (!schoolGroupId) {
-        return { stats: [], withoutProfile: 0 };
+        return { stats: [], withoutProfile: 0, modulesMap: {} };
       }
 
-      // 1. Compter les utilisateurs par profil
-      const { data: profileCounts, error: countError } = await supabase
+      // Utiliser la RPC optimisée (indexes + agrégation côté serveur)
+      const { data: rpcData, error: rpcError } = await (supabase.rpc as any)(
+        'get_profile_stats_optimized',
+        { p_school_group_id: schoolGroupId }
+      );
+
+      if (rpcError) {
+        console.error('Erreur RPC get_profile_stats_optimized:', rpcError);
+        throw rpcError;
+      }
+
+      // Compter les utilisateurs sans profil (requête légère avec index)
+      const { count: withoutProfile } = await supabase
         .from('users')
-        .select('access_profile_code')
+        .select('id', { count: 'exact', head: true })
         .eq('school_group_id', schoolGroupId)
+        .is('access_profile_code', null)
+        .eq('status', 'active')
         .not('role', 'in', '(super_admin,admin_groupe)');
 
-      if (countError) throw countError;
-
-      // Agréger les counts
-      const statsMap: Record<string, number> = {};
-      let withoutProfile = 0;
-
-      (profileCounts || []).forEach((u: any) => {
-        if (u.access_profile_code) {
-          statsMap[u.access_profile_code] = (statsMap[u.access_profile_code] || 0) + 1;
-        } else {
-          withoutProfile++;
-        }
-      });
-
-      // 2. Compter les modules par profil (filtré par groupe)
-      const { data: moduleCounts, error: moduleError } = await supabase
-        .from('access_profile_modules')
-        .select('access_profile_code')
-        .eq('school_group_id', schoolGroupId);
-
-      if (moduleError) {
-        console.warn('Table access_profile_modules non disponible:', moduleError);
-      }
-
+      // Construire la map des modules
       const modulesMap: Record<string, number> = {};
-      (moduleCounts || []).forEach((m: any) => {
-        if (m.access_profile_code) {
-          modulesMap[m.access_profile_code] = (modulesMap[m.access_profile_code] || 0) + 1;
-        }
+      (rpcData || []).forEach((s: any) => {
+        modulesMap[s.profile_code] = s.module_count || 0;
       });
 
       return {
-        stats: Object.entries(statsMap).map(([code, count]) => ({
-          profile_code: code,
-          user_count: count,
-          module_count: modulesMap[code] || 0,
+        stats: (rpcData || []).map((s: any) => ({
+          profile_code: s.profile_code,
+          user_count: Number(s.user_count),
+          module_count: s.module_count || 0,
         })),
-        withoutProfile,
+        withoutProfile: withoutProfile || 0,
         modulesMap,
       };
     },
@@ -151,18 +139,23 @@ export const useProfileStats = (): ProfileStatsResult => {
           }
         }
       )
-      // Écouter les changements sur access_profile_modules
+      // Écouter les changements sur access_profiles (permissions modifiées)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'access_profile_modules',
+          table: 'access_profiles',
+          filter: `school_group_id=eq.${schoolGroupId}`,
         },
         () => {
-          console.log('🔔 Stats profils: modules changés');
+          console.log('🔔 Stats profils: permissions changées');
           queryClient.invalidateQueries({ 
             queryKey: profileStatsKeys.group(schoolGroupId) 
+          });
+          // Invalider aussi les profils pour rafraîchir les cartes
+          queryClient.invalidateQueries({ 
+            queryKey: ['access-profiles'] 
           });
         }
       )

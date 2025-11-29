@@ -1,24 +1,20 @@
 /**
- * Page Mes Modules - INTERFACE PREMIUM
- * Interface moderne et performante pour tous les rôles
+ * Page Mes Modules - Interface Unifiée
+ * Affiche les modules assignés à l'utilisateur
+ * 
+ * @module MyModules
  */
 
-import { useAuth } from '@/features/auth/store/auth.store';
-import MyModulesProviseurModern from './MyModulesProviseurModern';
-import { MyModulesDebugSimple } from './MyModulesDebugSimple';
+import { AvailableModules } from '../components/AvailableModules';
 
+/**
+ * Page des modules utilisateur
+ * Utilise le composant AvailableModules qui récupère les modules via usePermissions
+ */
 export const MyModules = () => {
-  const { user } = useAuth();
-
-  // Log pour debug
-  console.log('🔍 MyModules - User:', user);
-  console.log('🔍 MyModules - School Group ID:', user?.schoolGroupId);
-  
-  // Interface Moderne pour le Proviseur - Dashboard avec animations simples !
-  if (user?.role && user.role.toString() === 'proviseur') {
-    return <MyModulesProviseurModern />;
-  }
-  
-  // Interface debug pour les autres rôles
-  return <MyModulesDebugSimple />;
+  return (
+    <div className="p-4 md:p-6">
+      <AvailableModules />
+    </div>
+  );
 };

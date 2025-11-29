@@ -9,7 +9,7 @@ import type { Category } from '@/features/dashboard/hooks/useGroupAvailableModul
 
 interface ModuleCategoryCardProps {
   category: Category;
-  permissions: Record<string, boolean>;
+  permissions: Record<string, boolean | 'read_only'>;
   isFullyChecked: boolean;
   onToggleCategory: (checked: boolean) => void;
   onToggleModule: (moduleSlug: string, checked: boolean) => void;
@@ -50,7 +50,9 @@ export const ModuleCategoryCard = ({
       {/* Liste Modules */}
       <div className="p-2 grid grid-cols-1 md:grid-cols-2 gap-2">
         {category.modules.map((module) => {
-          const isChecked = permissions[module.slug] || false;
+          const permValue = permissions[module.slug];
+          // Convertir en boolean pour le Switch (true ou 'read_only' = checked)
+          const isChecked = permValue === true || permValue === 'read_only';
           
           return (
             <div 

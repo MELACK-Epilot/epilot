@@ -49,30 +49,61 @@ export const useAccessProfiles = () => {
       return (data || []) as AccessProfile[];
     },
     enabled: isSuperAdmin || !!schoolGroupId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 30 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: 30 * 1000, // 30 secondes pour avoir des données fraîches
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true, // Rafraîchir quand l'utilisateur revient sur la page
   });
 };
 
 /**
- * Hook pour récupérer un profil spécifique
+ * Hook pour récupérer un profil spécifique par ID
  */
-export const useAccessProfile = (code: string) => {
+export const useAccessProfile = (profileId: string) => {
   return useQuery({
-    queryKey: ['access-profile', code],
+    queryKey: ['access-profile', profileId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('access_profiles')
         .select('*')
-        .eq('code', code)
+        .eq('id', profileId)
         .single();
       
       if (error) throw error;
       return data as AccessProfile;
     },
+    enabled: !!profileId,
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+};
+
+/**
+ * Hook pour récupérer un profil par code pour un groupe spécifique
+ */
+export const useAccessProfileByCode = (code: string, schoolGroupId?: string) => {
+  return useQuery({
+    queryKey: ['access-profile-by-code', code, schoolGroupId],
+    queryFn: async () => {
+      let query = supabase
+        .from('access_profiles')
+        .select('*')
+        .eq('code', code)
+        .eq('is_active', true);
+      
+      // Filtrer par groupe ou prendre le template
+      if (schoolGroupId) {
+        query = query.eq('school_group_id', schoolGroupId);
+      } else {
+        query = query.eq('is_template', true);
+      }
+      
+      const { data, error } = await query.single();
+      
+      if (error) throw error;
+      return data as AccessProfile;
+    },
     enabled: !!code,
-    staleTime: 0, // Toujours recharger les données fraîches
+    staleTime: 60 * 1000,
     refetchOnMount: 'always',
   });
 };

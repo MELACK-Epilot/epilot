@@ -43,8 +43,10 @@ export const ProfileCard = ({
   onDelete,
 }: ProfileCardProps) => {
   const colors = getRoleColor(profile.code);
-  // Utiliser moduleCount (depuis access_profile_modules) ou fallback sur permissions JSON
-  const permissionsCount = moduleCount > 0 ? moduleCount : countActiveModules(profile.permissions as Record<string, unknown> | null);
+  // Toujours calculer depuis les permissions JSON (source de vérité)
+  const permissionsFromJson = countActiveModules(profile.permissions as Record<string, unknown> | null);
+  // Utiliser moduleCount si fourni et > 0, sinon fallback sur JSON
+  const permissionsCount = moduleCount > 0 ? moduleCount : permissionsFromJson;
   const powerLevel = calculatePowerLevel(permissionsCount);
 
   return (

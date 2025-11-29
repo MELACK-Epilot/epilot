@@ -15,7 +15,6 @@ import {
   Key,
   Eye,
   Shield,
-  Package,
   User as UserIcon
 } from 'lucide-react';
 import { UserAvatar } from '../UserAvatar';
@@ -23,25 +22,56 @@ import { getStatusBadgeClass, getRoleBadgeClass } from '@/lib/colors';
 import type { User } from '../../types/dashboard.types';
 import type { ColumnDef } from '@tanstack/react-table';
 
+/** Type pour les profils d'accès (passés en paramètre) */
+interface AccessProfileInfo {
+  code: string;
+  name_fr: string;
+  icon?: string | null;
+}
+
+/** Couleurs par défaut pour les profils */
+const PROFILE_COLORS: Record<string, string> = {
+  chef_etablissement: 'bg-blue-100 text-blue-700 border-blue-200',
+  financier_sans_suppression: 'bg-green-100 text-green-700 border-green-200',
+  administratif_basique: 'bg-purple-100 text-purple-700 border-purple-200',
+  enseignant_saisie_notes: 'bg-orange-100 text-orange-700 border-orange-200',
+  parent_consultation: 'bg-pink-100 text-pink-700 border-pink-200',
+  eleve_consultation: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+};
+
+/** Icônes par défaut pour les profils */
+const PROFILE_ICONS: Record<string, string> = {
+  chef_etablissement: '👔',
+  financier_sans_suppression: '💰',
+  administratif_basique: '📋',
+  enseignant_saisie_notes: '👨‍🏫',
+  parent_consultation: '👨‍👩‍👧',
+  eleve_consultation: '🎓',
+};
+
 interface UseUsersColumnsProps {
   currentUser: any;
+  accessProfiles?: AccessProfileInfo[]; // Profils dynamiques depuis la BDD
   onView: (user: User) => void;
   onEdit: (user: User) => void;
   onDelete: (user: User) => void;
   onResetPassword: (user: User) => void;
-  onAssignModules: (user: User) => void;
   onOpenProfile: () => void;
 }
 
 export const getUsersColumns = ({
   currentUser,
+  accessProfiles = [],
   onView,
   onEdit,
   onDelete,
   onResetPassword,
-  onAssignModules,
   onOpenProfile
-}: UseUsersColumnsProps): ColumnDef<User>[] => [
+}: UseUsersColumnsProps): ColumnDef<User>[] => {
+  // Créer un map pour accès rapide aux profils par code
+  const profilesMap = new Map(accessProfiles.map(p => [p.code, p]));
+  
+  return [
   {
     id: 'avatar',
     header: '',
@@ -116,51 +146,25 @@ export const getUsersColumns = ({
         );
       }
       
-      const profileLabels: Record<string, { label: string; icon: string; color: string }> = {
-        chef_etablissement: { 
-          label: 'Chef d\'Établissement', 
-          icon: '👔',
-          color: 'bg-blue-100 text-blue-700 border-blue-200'
-        },
-        financier_sans_suppression: { 
-          label: 'Financier', 
-          icon: '💰',
-          color: 'bg-green-100 text-green-700 border-green-200'
-        },
-        administratif_basique: { 
-          label: 'Administratif', 
-          icon: '📋',
-          color: 'bg-purple-100 text-purple-700 border-purple-200'
-        },
-        enseignant_saisie_notes: { 
-          label: 'Enseignant', 
-          icon: '👨‍🏫',
-          color: 'bg-orange-100 text-orange-700 border-orange-200'
-        },
-        parent_consultation: { 
-          label: 'Parent', 
-          icon: '👨‍👩‍👧',
-          color: 'bg-pink-100 text-pink-700 border-pink-200'
-        },
-        eleve_consultation: { 
-          label: 'Élève', 
-          icon: '🎓',
-          color: 'bg-indigo-100 text-indigo-700 border-indigo-200'
-        },
-      };
-      
-      const profile = user.accessProfileCode ? profileLabels[user.accessProfileCode] : null;
-      
-      if (!profile) {
+      // Pas de code de profil
+      if (!user.accessProfileCode) {
         return (
           <span className="text-xs text-gray-400 italic">Non défini</span>
         );
       }
       
+      // Récupérer le profil depuis le map (dynamique depuis BDD)
+      const profileData = profilesMap.get(user.accessProfileCode);
+      
+      // Utiliser le nom dynamique ou fallback sur le code
+      const label = profileData?.name_fr || user.accessProfileCode;
+      const icon = profileData?.icon || PROFILE_ICONS[user.accessProfileCode] || '🔐';
+      const color = PROFILE_COLORS[user.accessProfileCode] || 'bg-gray-100 text-gray-700 border-gray-200';
+      
       return (
-        <Badge className={`${profile.color} border`}>
-          <span className="mr-1">{profile.icon}</span>
-          {profile.label}
+        <Badge className={`${color} border`}>
+          <span className="mr-1">{icon}</span>
+          {label}
         </Badge>
       );
     },
@@ -288,17 +292,6 @@ export const getUsersColumns = ({
                   Réinitialiser MDP
                 </DropdownMenuItem>
                 
-                {/* Assigner modules uniquement pour utilisateurs d'école */}
-                {user.role !== 'super_admin' && user.role !== 'admin_groupe' && (
-                  <DropdownMenuItem onClick={(e) => {
-                    e.stopPropagation();
-                    onAssignModules(user);
-                  }}>
-                    <Package className="h-4 w-4 mr-2" />
-                    Assigner modules
-                  </DropdownMenuItem>
-                )}
-                
                 <DropdownMenuSeparator />
                 
                 <DropdownMenuItem 
@@ -319,3 +312,4 @@ export const getUsersColumns = ({
     },
   },
 ];
+};

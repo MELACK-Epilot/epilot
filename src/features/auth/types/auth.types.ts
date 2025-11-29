@@ -26,7 +26,8 @@ export interface AuthResponse {
 }
 
 /**
- * Utilisateur authentifié (Legacy - à migrer vers Profile)
+ * Utilisateur authentifié
+ * Inclut le profil d'accès pour déterminer les modules accessibles
  */
 export interface User {
   id: string;
@@ -44,6 +45,10 @@ export interface User {
   schoolId?: string;
   createdAt: string;
   lastLogin?: string;
+  
+  // ✅ Profil d'accès - Détermine les modules accessibles
+  accessProfileCode?: string; // Code du profil (ex: 'enseignant_saisie_notes')
+  accessProfileName?: string; // Nom affiché (ex: 'Enseignant - Saisie Notes')
 }
 
 /**

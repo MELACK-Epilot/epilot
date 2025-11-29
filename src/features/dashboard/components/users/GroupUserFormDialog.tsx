@@ -267,17 +267,16 @@ export const GroupUserFormDialog = ({ open, onOpenChange, user, mode }: GroupUse
             ...formData as CreateUserFormValues,
             avatarFile: avatarFile || undefined,
           });
-          toast.success('Utilisateur créé avec succès');
+          // ✅ L'alerte est gérée dans useCreateUser (alertUserCreated)
         } else if (user) {
-          // ✅ CORRECTION : Passer les données directement, pas dans un objet "data"
           await updateUser.mutateAsync({
             id: user.id,
             firstName: formData.firstName,
             lastName: formData.lastName,
             email: formData.email,
             phone: formData.phone,
-            role: formData.role, // ✅ IMPORTANT : Inclure le rôle
-            accessProfileCode: formData.accessProfileCode, // ✅ AJOUT : Profil d'accès
+            role: formData.role,
+            accessProfileCode: formData.accessProfileCode,
             gender: formData.gender,
             dateOfBirth: formData.dateOfBirth,
             schoolGroupId: formData.schoolGroupId,
@@ -286,7 +285,7 @@ export const GroupUserFormDialog = ({ open, onOpenChange, user, mode }: GroupUse
             avatarFile: avatarFile || undefined,
             avatarRemoved,
           });
-          toast.success('Utilisateur modifié avec succès');
+          // ✅ L'alerte est gérée dans useUpdateUser (alertUserUpdated)
         }
 
         // ✅ Invalider les queries pour rafraîchissement automatique
@@ -299,8 +298,8 @@ export const GroupUserFormDialog = ({ open, onOpenChange, user, mode }: GroupUse
         setAvatarFile(null);
         setAvatarPreview(null);
         setAvatarRemoved(false);
-      } catch (error: any) {
-        toast.error(error.message || 'Une erreur est survenue');
+      } catch {
+        // ✅ L'erreur est gérée dans les hooks (alertUserCreationFailed, alertOperationFailed)
       } finally {
         // ✅ Débloquer après traitement
         setIsSubmitting(false);

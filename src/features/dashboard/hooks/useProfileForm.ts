@@ -82,7 +82,7 @@ export const useProfileForm = ({
   // ============================================
   
   const { data: freshProfile, isLoading: profileLoading } = useAccessProfile(
-    isOpen && profileToEdit?.code ? profileToEdit.code : ''
+    isOpen && profileToEdit?.id ? profileToEdit.id : ''
   );
   
   const { data: currentGroup, isLoading: groupLoading } = useCurrentUserGroup();
@@ -106,7 +106,7 @@ export const useProfileForm = ({
   // LOCAL STATE
   // ============================================
   
-  const [permissions, setPermissions] = useState<Record<string, boolean>>({});
+  const [permissions, setPermissions] = useState<Record<string, boolean | 'read_only'>>({});
   const [isCustomRole, setIsCustomRole] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -143,7 +143,7 @@ export const useProfileForm = ({
   );
   
   const activeCount = useMemo(() => 
-    Object.values(permissions).filter(Boolean).length,
+    Object.values(permissions).filter(v => v === true || v === 'read_only').length,
     [permissions]
   );
   
@@ -154,7 +154,7 @@ export const useProfileForm = ({
   // Sync state when profile data changes
   useEffect(() => {
     if (isOpen && currentProfile) {
-      setPermissions(profileModulePermissions);
+      setPermissions(profileModulePermissions as Record<string, boolean | 'read_only'>);
       setAvatarPreview(currentProfile.avatar_url || null);
       setEmojiIcon(currentProfile.icon || DEFAULT_PROFILE_EMOJI);
       setIsCustomRole(true);

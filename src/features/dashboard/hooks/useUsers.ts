@@ -303,7 +303,36 @@ export const useCreateUser = () => {
 
   return useMutation({
     mutationFn: async (input: CreateUserInput) => {
-      // ✅ VÉRIFIER LA LIMITE D'UTILISATEURS (DYNAMIQUE depuis subscription_plans)
+      // ============================================
+      // 1. VÉRIFIER SI L'EMAIL EXISTE DÉJÀ
+      // ============================================
+      const { data: existingUser, error: checkError } = await supabase
+        .from('users')
+        .select('id, email, first_name, last_name, status')
+        .eq('email', input.email.toLowerCase().trim())
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('❌ Erreur vérification email:', checkError);
+      }
+
+      if (existingUser) {
+        const userName = `${existingUser.first_name || ''} ${existingUser.last_name || ''}`.trim();
+        const statusLabel = existingUser.status === 'active' ? 'actif' : 
+                           existingUser.status === 'inactive' ? 'inactif' : 'suspendu';
+        
+        // Afficher l'alerte avec les détails de l'utilisateur existant
+        alertEmailAlreadyExists(input.email, userName, existingUser.status);
+        
+        throw new Error(
+          `L'email "${input.email}" est déjà utilisé par ${userName || 'un utilisateur'} (compte ${statusLabel}). ` +
+          `Veuillez utiliser une autre adresse email ou réactiver le compte existant.`
+        );
+      }
+
+      // ============================================
+      // 2. VÉRIFIER LA LIMITE D'UTILISATEURS
+      // ============================================
       if (input.schoolGroupId) {
         const { data: limitCheck, error: limitError } = await supabase.rpc('check_plan_limit', {
           p_school_group_id: input.schoolGroupId,
@@ -323,9 +352,11 @@ export const useCreateUser = () => {
         }
       }
 
-      // 1. Créer l'utilisateur dans Supabase Auth
+      // ============================================
+      // 3. CRÉER L'UTILISATEUR DANS SUPABASE AUTH
+      // ============================================
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: input.email,
+        email: input.email.toLowerCase().trim(),
         password: input.password,
         options: {
           data: {
@@ -340,17 +371,20 @@ export const useCreateUser = () => {
         // ✅ Messages d'erreur personnalisés avec alertes modernes
         if (authError.message.includes('already registered') || authError.message.includes('already exists')) {
           alertEmailAlreadyExists(input.email);
-          throw new Error(`L'email ${input.email} est déjà utilisé.`);
+          throw new Error(`L'email "${input.email}" est déjà enregistré dans le système d'authentification.`);
         }
         
         if (authError.message.includes('invalid email')) {
           alertInvalidEmail(input.email);
-          throw new Error(`L'email ${input.email} n'est pas valide.`);
+          throw new Error(`L'adresse email "${input.email}" n'est pas valide. Vérifiez le format.`);
         }
         
         if (authError.message.includes('password')) {
           alertWeakPassword();
-          throw new Error('Le mot de passe ne respecte pas les critères de sécurité.');
+          throw new Error(
+            'Le mot de passe ne respecte pas les critères de sécurité : ' +
+            '8 caractères minimum, 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial.'
+          );
         }
         
         // Erreur générique

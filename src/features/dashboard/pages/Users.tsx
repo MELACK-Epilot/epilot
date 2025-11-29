@@ -21,6 +21,7 @@ import { getUsersColumns } from '../components/users/UsersTableColumns';
 import { useUsers, useUserStats, useDeleteUser, useResetPassword, useUsersRealtime, userKeys, useUserEvolutionStats, useUserDistributionStats } from '../hooks/useUsers';
 import { useSchools } from '../hooks/useSchools-simple';
 import { useSchoolGroups } from '../hooks/useSchoolGroups';
+import { useAccessProfiles } from '../hooks/useAccessProfiles';
 import { useLoginHistory } from '../hooks/useUserProfile';
 import type { User } from '../types/dashboard.types';
 import { toast } from 'sonner';
@@ -96,6 +97,9 @@ export const Users = () => {
   const { data: schoolGroupsData } = useSchoolGroups();
   const schoolGroups = schoolGroupsData || [];
   
+  // Charger les profils d'accès pour afficher les noms dynamiques
+  const { data: accessProfiles = [] } = useAccessProfiles();
+  
   const deleteUser = useDeleteUser();
   const resetPassword = useResetPassword();
   const queryClient = useQueryClient();
@@ -127,11 +131,11 @@ export const Users = () => {
     
     try {
       await deleteUser.mutateAsync(selectedUser.id);
-      toast.success(`${selectedUser.firstName} ${selectedUser.lastName} a été supprimé(e) définitivement`);
+      // L'alerte est gérée dans le hook useDeleteUser (alertUserDeleted)
       setIsDeleteDialogOpen(false);
       setSelectedUser(null);
-    } catch (error: any) {
-      toast.error(error.message || 'Erreur lors de la suppression');
+    } catch {
+      // L'erreur est gérée dans le hook useDeleteUser (alertOperationFailed)
     }
   }, [selectedUser, deleteUser]);
 
@@ -139,16 +143,13 @@ export const Users = () => {
     if (confirm(`Envoyer un email de réinitialisation à ${user.email} ?`)) {
       try {
         await resetPassword.mutateAsync(user.email);
-        toast.success('Email de réinitialisation envoyé');
-      } catch (error: any) {
-        toast.error(error.message || 'Erreur lors de l\'envoi');
+        toast.success(`📧 Email de réinitialisation envoyé à ${user.email}`);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Erreur lors de l\'envoi';
+        toast.error(message);
       }
     }
   }, [resetPassword]);
-
-  const handleAssignModules = useCallback((user: User) => {
-    setSelectedUserForModules(user);
-  }, []);
 
   const handleOpenProfile = useCallback(() => {
     setIsProfileDialogOpen(true);
@@ -259,13 +260,13 @@ export const Users = () => {
   // 6. Colonnes du tableau
   const columns = useMemo(() => getUsersColumns({
     currentUser,
+    accessProfiles: accessProfiles.map(p => ({ code: p.code, name_fr: p.name_fr, icon: p.icon })),
     onView: handleView,
     onEdit: handleEdit,
     onDelete: handleDelete,
     onResetPassword: handleResetPassword,
-    onAssignModules: handleAssignModules,
     onOpenProfile: handleOpenProfile
-  }), [currentUser, handleView, handleEdit, handleDelete, handleResetPassword, handleAssignModules, handleOpenProfile]);
+  }), [currentUser, accessProfiles, handleView, handleEdit, handleDelete, handleResetPassword, handleOpenProfile]);
 
   // 7. Rendu
   return (

@@ -30,7 +30,8 @@ const CODE_PATTERN = /^[a-z][a-z0-9_]{2,49}$/;
 type SupabaseClientType = SupabaseClient<Database>;
 
 /** Permissions sous forme de Record (usage frontend) */
-export type ProfilePermissions = Record<string, boolean>;
+/** true = accès complet, 'read_only' = lecture seule, false = pas d'accès */
+export type ProfilePermissions = Record<string, boolean | 'read_only'>;
 
 /** Données pour créer/mettre à jour un profil */
 export interface ProfileData {

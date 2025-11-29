@@ -4,36 +4,17 @@
  * @module alerts
  */
 
-import { toast } from 'sonner';
-import { CheckCircle2, XCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
-
-/**
- * Configuration des icônes pour chaque type d'alerte
- */
-const ALERT_ICONS = {
-  success: CheckCircle2,
-  error: XCircle,
-  warning: AlertTriangle,
-  info: Info,
-};
-
-/**
- * Configuration des couleurs pour chaque type
- */
-const ALERT_COLORS = {
-  success: '#10B981', // Green
-  error: '#EF4444',   // Red
-  warning: '#F59E0B', // Orange
-  info: '#3B82F6',    // Blue
-};
+import { toast, type ExternalToast } from 'sonner';
 
 /**
  * Durée par défaut des alertes (en ms)
  */
 const DEFAULT_DURATION = 4000;
+const ERROR_DURATION = 5000;
+const WARNING_DURATION = 4000;
 
 /**
- * Interface pour les options d'alerte
+ * Interface pour les options d'alerte (compatible Sonner)
  */
 interface AlertOptions {
   title?: string;
@@ -49,6 +30,34 @@ interface AlertOptions {
   };
 }
 
+/**
+ * Convertit nos options en options Sonner avec types corrects
+ */
+const toSonnerOptions = (options?: AlertOptions): ExternalToast => {
+  if (!options) return {};
+  
+  const sonnerOpts: ExternalToast = {
+    duration: options.duration,
+  };
+  
+  // Wrapper pour convertir notre onClick simple en onClick Sonner
+  if (options.action) {
+    sonnerOpts.action = {
+      label: options.action.label,
+      onClick: () => options.action?.onClick(),
+    };
+  }
+  
+  if (options.cancel) {
+    sonnerOpts.cancel = {
+      label: options.cancel.label,
+      onClick: () => options.cancel?.onClick?.(),
+    };
+  }
+  
+  return sonnerOpts;
+};
+
 // ============================================================================
 // ALERTES GÉNÉRIQUES
 // ============================================================================
@@ -57,11 +66,11 @@ interface AlertOptions {
  * Alerte de succès
  */
 export const showSuccess = (message: string, options?: AlertOptions) => {
+  const sonnerOpts = toSonnerOptions(options);
   toast.success(options?.title || 'Succès', {
     description: message,
     duration: options?.duration || DEFAULT_DURATION,
-    action: options?.action,
-    cancel: options?.cancel,
+    ...sonnerOpts,
   });
 };
 
@@ -69,11 +78,11 @@ export const showSuccess = (message: string, options?: AlertOptions) => {
  * Alerte d'erreur
  */
 export const showError = (message: string, options?: AlertOptions) => {
+  const sonnerOpts = toSonnerOptions(options);
   toast.error(options?.title || 'Erreur', {
     description: message,
-    duration: options?.duration || 5000, // Plus long pour les erreurs
-    action: options?.action,
-    cancel: options?.cancel,
+    duration: options?.duration || ERROR_DURATION,
+    ...sonnerOpts,
   });
 };
 
@@ -81,11 +90,11 @@ export const showError = (message: string, options?: AlertOptions) => {
  * Alerte d'avertissement
  */
 export const showWarning = (message: string, options?: AlertOptions) => {
+  const sonnerOpts = toSonnerOptions(options);
   toast.warning(options?.title || 'Attention', {
     description: message,
-    duration: options?.duration || DEFAULT_DURATION,
-    action: options?.action,
-    cancel: options?.cancel,
+    duration: options?.duration || WARNING_DURATION,
+    ...sonnerOpts,
   });
 };
 
@@ -93,11 +102,11 @@ export const showWarning = (message: string, options?: AlertOptions) => {
  * Alerte d'information
  */
 export const showInfo = (message: string, options?: AlertOptions) => {
+  const sonnerOpts = toSonnerOptions(options);
   toast.info(options?.title || 'Information', {
     description: message,
     duration: options?.duration || DEFAULT_DURATION,
-    action: options?.action,
-    cancel: options?.cancel,
+    ...sonnerOpts,
   });
 };
 
@@ -128,18 +137,24 @@ export const updateLoading = (
 // ============================================================================
 
 /**
- * Email déjà utilisé
+ * Email déjà utilisé - avec détails sur l'utilisateur existant
  */
-export const alertEmailAlreadyExists = (email: string) => {
+export const alertEmailAlreadyExists = (email: string, userName?: string, status?: string) => {
+  const statusText = status === 'active' ? '(compte actif)' : 
+                     status === 'inactive' ? '(compte inactif)' : 
+                     status === 'suspended' ? '(compte suspendu)' : '';
+  
+  const userInfo = userName ? `par "${userName}" ${statusText}` : '';
+  
   showError(
-    `L'adresse email ${email} est déjà utilisée. Veuillez utiliser une autre adresse.`,
+    `L'adresse email "${email}" est déjà utilisée ${userInfo}. Choisissez une autre adresse ou réactivez le compte existant.`,
     {
-      title: 'Email déjà utilisé',
-      duration: 5000,
+      title: '⚠️ Email déjà utilisé',
+      duration: 8000,
       action: {
-        label: 'Connexion',
+        label: 'Voir les utilisateurs',
         onClick: () => {
-          window.location.href = '/login';
+          window.location.href = `/dashboard/users?search=${encodeURIComponent(email)}`;
         },
       },
     }
@@ -528,20 +543,25 @@ export const alertSessionExpired = () => {
 
 /**
  * Alerte avec promesse (affiche loading puis success/error)
+ * Note: toast.promise retourne un ID, pas la promesse elle-même
  */
 export const alertPromise = <T,>(
   promise: Promise<T>,
   messages: {
     loading: string;
-    success: string;
-    error: string;
+    success: string | ((data: T) => string);
+    error: string | ((error: Error) => string);
   }
 ): Promise<T> => {
-  return toast.promise(promise, {
+  // toast.promise affiche le toast mais retourne un ID
+  // On retourne la promesse originale pour permettre le chaînage
+  toast.promise(promise, {
     loading: messages.loading,
     success: messages.success,
     error: messages.error,
   });
+  
+  return promise;
 };
 
 // ============================================================================

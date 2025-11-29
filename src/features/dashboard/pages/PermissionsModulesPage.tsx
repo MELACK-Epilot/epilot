@@ -4,15 +4,15 @@
  * @module PermissionsModulesPage
  */
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, RefreshCw, Users, ShieldCheck, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/store/auth.store';
 import { useUsers } from '../hooks/useUsers';
-import { useRoleStats } from '../hooks/useRoleStats';
 import { useAccessProfiles } from '../hooks/useAccessProfiles';
+import { useAccessProfileStats } from '../hooks/useAccessProfileStats';
 import { toast } from 'sonner';
 
 // Composants
@@ -25,44 +25,16 @@ export default function PermissionsModulesPage() {
 
   // Data
   const { refetch } = useUsers({ schoolGroupId: user?.schoolGroupId });
-  const { data: roleStats, refetch: refetchStats } = useRoleStats();
+  const { data: profileStats, refetch: refetchStats } = useAccessProfileStats();
   const { data: profiles, refetch: refetchProfiles } = useAccessProfiles();
 
-  // Calcul des KPIs avancés
-  const kpis = useMemo(() => {
-    if (!roleStats || !profiles) return {
-      totalUsers: 0,
-      totalRoles: 0,
-      configuredRoles: 0,
-      mostPopularRole: null,
-      leastPopularRole: null
-    };
-
-    const totalUsers = Object.values(roleStats).reduce((a, b) => a + b, 0);
-    const totalRoles = profiles.length;
-    const configuredRoles = profiles.filter((p: any) => Object.keys(p.permissions || {}).length > 0).length;
-
-    // Trouver le rôle le plus utilisé
-    let maxCount = -1;
-    let mostPopularCode = '';
-    Object.entries(roleStats).forEach(([code, count]) => {
-      if (count > maxCount) {
-        maxCount = count;
-        mostPopularCode = code;
-      }
-    });
-    const mostPopularRole = profiles.find((p: any) => p.code === mostPopularCode);
-
-    return {
-      totalUsers,
-      totalRoles,
-      configuredRoles,
-      mostPopularRole: mostPopularRole ? {
-        name: mostPopularRole.name_fr,
-        count: maxCount
-      } : null
-    };
-  }, [roleStats, profiles]);
+  // KPIs basés sur les profils d'accès (pas les rôles)
+  const totalUsersWithProfile = profileStats?.totalUsersWithProfile ?? 0;
+  const mostUsedProfile = profileStats?.mostUsedProfile;
+  const totalProfiles = profiles?.length ?? 0;
+  const configuredProfiles = profiles?.filter((p: any) => 
+    Object.keys(p.permissions || {}).length > 0
+  ).length ?? 0;
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -123,7 +95,7 @@ export default function PermissionsModulesPage() {
             </div>
             <div>
               <p className="text-white/80 text-sm font-medium uppercase tracking-wider mb-1">Utilisateurs Gérés</p>
-              <h3 className="text-3xl font-bold text-white">{kpis.totalUsers}</h3>
+              <h3 className="text-3xl font-bold text-white">{totalUsersWithProfile}</h3>
             </div>
           </div>
         </Card>
@@ -144,10 +116,10 @@ export default function PermissionsModulesPage() {
             </div>
             <div>
               <p className="text-white/80 text-sm font-medium uppercase tracking-wider mb-1">Le plus utilisé</p>
-              {kpis.mostPopularRole ? (
+              {mostUsedProfile ? (
                 <div>
-                  <h3 className="text-xl font-bold text-white truncate">{kpis.mostPopularRole.name}</h3>
-                  <p className="text-white/70 text-sm">{kpis.mostPopularRole.count} utilisateurs</p>
+                  <h3 className="text-xl font-bold text-white truncate">{mostUsedProfile.profile_name}</h3>
+                  <p className="text-white/70 text-sm">{mostUsedProfile.user_count} utilisateur{Number(mostUsedProfile.user_count) > 1 ? 's' : ''}</p>
                 </div>
               ) : (
                 <h3 className="text-xl font-bold text-white">Aucun</h3>
@@ -171,10 +143,10 @@ export default function PermissionsModulesPage() {
               </span>
             </div>
             <div>
-              <p className="text-white/80 text-sm font-medium uppercase tracking-wider mb-1">Rôles Configurés</p>
+              <p className="text-white/80 text-sm font-medium uppercase tracking-wider mb-1">Profils Configurés</p>
               <div className="flex items-baseline gap-2">
-                <h3 className="text-3xl font-bold text-white">{kpis.configuredRoles}</h3>
-                <span className="text-sm text-white/70 font-medium">sur {kpis.totalRoles} rôles</span>
+                <h3 className="text-3xl font-bold text-white">{configuredProfiles}</h3>
+                <span className="text-sm text-white/70 font-medium">sur {totalProfiles} profils</span>
               </div>
             </div>
           </div>
