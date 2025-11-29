@@ -7,22 +7,38 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { useAuth } from '@/features/auth/store/auth.store';
 import type { AccessProfile } from '@/stores/access-profiles.store';
 
 /**
- * Hook pour récupérer tous les profils d'accès
+ * Hook pour récupérer les profils d'accès du groupe de l'utilisateur
+ * - Admin Groupe: voit les profils de son groupe
+ * - Super Admin: voit tous les profils (templates + groupes)
  */
 export const useAccessProfiles = () => {
+  const { user } = useAuth();
+  const schoolGroupId = user?.schoolGroupId;
+  const isSuperAdmin = user?.role === 'super_admin';
+
   return useQuery({
-    queryKey: ['access-profiles'],
+    queryKey: ['access-profiles', schoolGroupId, isSuperAdmin],
     queryFn: async () => {
-      console.log('🔍 Fetching access profiles...');
+      console.log('🔍 Fetching access profiles...', { schoolGroupId, isSuperAdmin });
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('access_profiles')
         .select('*')
-        .eq('is_active', true)
-        .order('name_fr');
+        .eq('is_active', true);
+      
+      // Filtrer par groupe pour Admin Groupe
+      if (!isSuperAdmin && schoolGroupId) {
+        query = query.eq('school_group_id', schoolGroupId);
+      }
+      
+      // Super Admin voit tout (templates + groupes)
+      // Pas de filtre supplémentaire
+      
+      const { data, error } = await query.order('name_fr');
       
       if (error) {
         console.error('❌ Error fetching profiles:', error);
@@ -32,8 +48,9 @@ export const useAccessProfiles = () => {
       console.log(`✅ Fetched ${data?.length || 0} profiles`);
       return (data || []) as AccessProfile[];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes (profils changent rarement)
-    gcTime: 30 * 60 * 1000, // 30 minutes (remplace cacheTime en React Query v5)
+    enabled: isSuperAdmin || !!schoolGroupId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 };
@@ -55,7 +72,8 @@ export const useAccessProfile = (code: string) => {
       return data as AccessProfile;
     },
     enabled: !!code,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 0, // Toujours recharger les données fraîches
+    refetchOnMount: 'always',
   });
 };
 

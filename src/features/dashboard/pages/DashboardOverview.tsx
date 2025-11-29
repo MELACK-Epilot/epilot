@@ -17,6 +17,7 @@ import { useDashboardStats } from '../hooks/useDashboardStats';
 import { useAuth } from '@/features/auth/store/auth.store';
 import { ExportButton } from '../components/ExportButton';
 import GroupDashboard from './GroupDashboard';
+import SuperAdminDashboard from './SuperAdminDashboard';
 import SuperAdminAlertsWidget from '../components/widgets/SuperAdminAlertsWidget';
 
 
@@ -26,7 +27,12 @@ import SuperAdminAlertsWidget from '../components/widgets/SuperAdminAlertsWidget
 export const DashboardOverview = () => {
   const { user } = useAuth();
   
-  // Si Admin Groupe, afficher le nouveau dashboard optimisé
+  // Si Super Admin, afficher le nouveau dashboard premium
+  if (user?.role === 'super_admin') {
+    return <SuperAdminDashboard />;
+  }
+  
+  // Si Admin Groupe, afficher le dashboard optimisé
   if (user?.role === 'admin_groupe') {
     return <GroupDashboard />;
   }

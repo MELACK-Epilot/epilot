@@ -1,9 +1,10 @@
 /**
  * Modal de composition de message
  * Design moderne avec couleurs E-Pilot
+ * Restreint aux communications Super Admin <-> Admin Groupe
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,8 +19,25 @@ import {
   User,
   FileText,
   Image as ImageIcon,
-  AlertCircle
+  AlertCircle,
+  Check,
+  Loader2
 } from 'lucide-react';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { supabase } from '@/lib/supabase';
 
 interface ComposeMessageDialogProps {
   isOpen: boolean;
@@ -28,16 +46,25 @@ interface ComposeMessageDialogProps {
 }
 
 interface MessageData {
-  recipients: string[];
+  recipientIds: string[]; // UUIDs
   subject: string;
   content: string;
   attachments: File[];
   type: 'direct' | 'group' | 'broadcast';
 }
 
+interface UserOption {
+  id: string;
+  label: string;
+  role: string;
+}
+
 export const ComposeMessageDialog = ({ isOpen, onClose, onSend }: ComposeMessageDialogProps) => {
-  const [recipients, setRecipients] = useState<string[]>([]);
-  const [recipientInput, setRecipientInput] = useState('');
+  const [selectedRecipients, setSelectedRecipients] = useState<UserOption[]>([]);
+  const [availableRecipients, setAvailableRecipients] = useState<UserOption[]>([]);
+  const [isLoadingRecipients, setIsLoadingRecipients] = useState(false);
+  const [openCombobox, setOpenCombobox] = useState(false);
+  
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -45,15 +72,50 @@ export const ComposeMessageDialog = ({ isOpen, onClose, onSend }: ComposeMessage
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleAddRecipient = () => {
-    if (recipientInput.trim() && !recipients.includes(recipientInput.trim())) {
-      setRecipients([...recipients, recipientInput.trim()]);
-      setRecipientInput('');
+  // Charger les destinataires autorisés (Admin Groupe uniquement)
+  useEffect(() => {
+    if (isOpen) {
+      const fetchRecipients = async () => {
+        setIsLoadingRecipients(true);
+        try {
+          // Récupérer uniquement les Admin Groupe et Super Admin
+          // Exclure les écoles, parents, élèves
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, role, school_group:school_groups(name)')
+            .in('role', ['admin_groupe', 'super_admin'])
+            .order('full_name');
+
+          if (error) throw error;
+
+          const options = (data || []).map((user: any) => ({
+            id: user.id,
+            label: user.full_name || user.email,
+            role: user.role === 'super_admin' ? 'Super Admin' : `Admin Groupe (${user.school_group?.name || 'N/A'})`
+          }));
+
+          setAvailableRecipients(options);
+        } catch (err) {
+          console.error('Erreur chargement destinataires:', err);
+          setError('Impossible de charger la liste des destinataires');
+        } finally {
+          setIsLoadingRecipients(false);
+        }
+      };
+
+      fetchRecipients();
     }
+  }, [isOpen]);
+
+  const handleSelectRecipient = (recipient: UserOption) => {
+    if (!selectedRecipients.find(r => r.id === recipient.id)) {
+      setSelectedRecipients([...selectedRecipients, recipient]);
+    }
+    setOpenCombobox(false);
   };
 
-  const handleRemoveRecipient = (recipient: string) => {
-    setRecipients(recipients.filter(r => r !== recipient));
+  const handleRemoveRecipient = (recipientId: string) => {
+    setSelectedRecipients(selectedRecipients.filter(r => r.id !== recipientId));
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,8 +141,8 @@ export const ComposeMessageDialog = ({ isOpen, onClose, onSend }: ComposeMessage
   };
 
   const handleSend = () => {
-    if (recipients.length === 0) {
-      setError('Veuillez ajouter au moins un destinataire');
+    if (selectedRecipients.length === 0 && messageType !== 'broadcast') {
+      setError('Veuillez sélectionner au moins un destinataire');
       return;
     }
     if (!content.trim()) {
@@ -89,7 +151,7 @@ export const ComposeMessageDialog = ({ isOpen, onClose, onSend }: ComposeMessage
     }
 
     onSend({
-      recipients,
+      recipientIds: selectedRecipients.map(r => r.id),
       subject,
       content,
       attachments,
@@ -97,7 +159,7 @@ export const ComposeMessageDialog = ({ isOpen, onClose, onSend }: ComposeMessage
     });
 
     // Reset form
-    setRecipients([]);
+    setSelectedRecipients([]);
     setSubject('');
     setContent('');
     setAttachments([]);
@@ -147,59 +209,91 @@ export const ComposeMessageDialog = ({ isOpen, onClose, onSend }: ComposeMessage
               </Button>
               <Button
                 type="button"
-                variant={messageType === 'group' ? 'default' : 'outline'}
-                onClick={() => setMessageType('group')}
-                className={messageType === 'group' ? 'bg-[#2A9D8F] hover:bg-[#1d7a6f]' : ''}
-              >
-                <Users className="w-4 h-4 mr-2" />
-                Groupe
-              </Button>
-              <Button
-                type="button"
                 variant={messageType === 'broadcast' ? 'default' : 'outline'}
                 onClick={() => setMessageType('broadcast')}
                 className={messageType === 'broadcast' ? 'bg-[#2A9D8F] hover:bg-[#1d7a6f]' : ''}
               >
                 <Send className="w-4 h-4 mr-2" />
-                Diffusion
+                Diffusion (Tous)
               </Button>
             </div>
           </div>
 
-          {/* Destinataires */}
-          <div className="space-y-2">
-            <Label htmlFor="recipients" className="text-sm font-medium text-gray-700">
-              Destinataires *
-            </Label>
-            <div className="flex gap-2">
-              <Input
-                id="recipients"
-                placeholder="Nom ou email du destinataire..."
-                value={recipientInput}
-                onChange={(e) => setRecipientInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddRecipient())}
-                className="flex-1"
-              />
-              <Button type="button" onClick={handleAddRecipient} variant="outline">
-                Ajouter
-              </Button>
+          {/* Destinataires (sauf si broadcast) */}
+          {messageType !== 'broadcast' && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">
+                Destinataires (Admin Groupe uniquement) *
+              </Label>
+              <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openCombobox}
+                    className="w-full justify-between"
+                  >
+                    Sélectionner un destinataire...
+                    <Users className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Rechercher un admin..." />
+                    <CommandList>
+                      <CommandEmpty>Aucun administrateur trouvé.</CommandEmpty>
+                      <CommandGroup>
+                        {isLoadingRecipients ? (
+                          <div className="p-4 text-center text-sm text-gray-500 flex items-center justify-center">
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Chargement...
+                          </div>
+                        ) : (
+                          availableRecipients.map((recipient) => (
+                            <CommandItem
+                              key={recipient.id}
+                              value={recipient.label}
+                              onSelect={() => handleSelectRecipient(recipient)}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedRecipients.find(r => r.id === recipient.id) ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <span>{recipient.label}</span>
+                                <span className="text-xs text-gray-500">{recipient.role}</span>
+                              </div>
+                            </CommandItem>
+                          ))
+                        )}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+
+              {selectedRecipients.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {selectedRecipients.map((recipient) => (
+                    <Badge key={recipient.id} variant="secondary" className="pl-3 pr-1 py-1 flex items-center gap-1">
+                      <span className="font-medium">{recipient.label}</span>
+                      <span className="text-xs text-gray-500 border-l border-gray-300 pl-1 ml-1">
+                        {recipient.role}
+                      </span>
+                      <button
+                        onClick={() => handleRemoveRecipient(recipient.id)}
+                        className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
-            {recipients.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {recipients.map((recipient, index) => (
-                  <Badge key={index} variant="secondary" className="pl-3 pr-1 py-1">
-                    {recipient}
-                    <button
-                      onClick={() => handleRemoveRecipient(recipient)}
-                      className="ml-2 hover:bg-gray-300 rounded-full p-0.5"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Sujet */}
           <div className="space-y-2">

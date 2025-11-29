@@ -151,14 +151,16 @@ export const PlanDistributionChart = ({ data, isLoading }: PlanDistributionChart
       <div className="mt-6 pt-6 border-t bg-gray-50 -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-gray-600">Revenu Total</p>
+            <p className="text-sm text-gray-600">MRR Total</p>
             <p className="text-xl font-bold text-gray-900">
               {formatRevenue(totalRevenue)} FCFA
             </p>
+            <p className="text-xs text-gray-500">Revenu Mensuel Récurrent</p>
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-600">Abonnements</p>
             <p className="text-xl font-bold text-gray-900">{totalSubscriptions}</p>
+            <p className="text-xs text-gray-500">Actifs</p>
           </div>
         </div>
       </div>

@@ -38,11 +38,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCurrentUserGroup } from '../hooks/useCurrentUserGroup';
-import { useSchoolGroupModules, useSchoolGroupCategories } from '../hooks/useSchoolGroupModules';
+import { useGroupModules, GroupModule, ModuleCategory } from '../hooks/useGroupModules';
 import { SchoolGroupModulesDialog } from '../components/school-groups/SchoolGroupModulesDialog';
 import { PlanUpgradeRequestDialog } from '../components/plans/PlanUpgradeRequestDialog';
 import { ModuleDetailsDialog } from '../components/modules/ModuleDetailsDialog';
-import type { ModuleWithCategory } from '../hooks/useSchoolGroupModules';
+
+// Type étendu pour l'affichage
+interface DisplayModule extends GroupModule {
+  category: ModuleCategory;
+}
 
 /**
  * Badge de plan avec couleur
@@ -125,7 +129,7 @@ const ModuleCard = ({
   onDetails,
   onLaunch 
 }: { 
-  module: ModuleWithCategory; 
+  module: DisplayModule; 
   index: number; 
   onDetails: () => void;
   onLaunch: () => void;
@@ -206,7 +210,7 @@ const ModuleRow = ({
   onDetails,
   onLaunch 
 }: { 
-  module: ModuleWithCategory; 
+  module: DisplayModule; 
   index: number; 
   onDetails: () => void;
   onLaunch: () => void;
@@ -246,7 +250,6 @@ const ModuleRow = ({
 
           {/* Actions */}
           <div className="flex items-center gap-3 flex-shrink-0">
-            <PlanBadge plan={(module as any).required_plan || 'gratuit'} />
             <div className="h-8 w-px bg-gray-200 mx-2" />
             <Button 
               variant="ghost" 
@@ -272,7 +275,7 @@ const ModuleRow = ({
 };
 
 /**
- * Page principale - Mes Modules (VERSION AMÉLIORÉE)
+ * Page principale - Mes Modules (VERSION AMÉLIORÉE & OPTIMISÉE)
  */
 export const MyGroupModules = () => {
   const navigate = useNavigate();
@@ -281,25 +284,37 @@ export const MyGroupModules = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [selectedModule, setSelectedModule] = useState<ModuleWithCategory | null>(null);
+  const [selectedModule, setSelectedModule] = useState<DisplayModule | null>(null);
 
-  // Récupérer le groupe de l'utilisateur connecté
+  // Récupérer le groupe de l'utilisateur connecté (pour header info)
   const { data: currentGroup, isLoading: groupLoading, error: groupError } = useCurrentUserGroup();
 
-  // Récupérer les modules et catégories disponibles
-  const { data: modulesData, isLoading: modulesLoading } = useSchoolGroupModules(currentGroup?.id);
-  const { data: categoriesData, isLoading: categoriesLoading } = useSchoolGroupCategories(currentGroup?.id);
+  // Récupérer les modules via le nouveau hook optimisé
+  const { data: categoriesData, isLoading: modulesLoading, error: modulesError } = useGroupModules();
 
-  const isLoading = groupLoading || modulesLoading || categoriesLoading;
+  const isLoading = groupLoading || modulesLoading;
 
-  // Récupérer le plan dynamique depuis modulesData
-  const dynamicPlan = (modulesData?.schoolGroup as any)?.school_group_subscriptions?.[0]?.subscription_plans?.slug || currentGroup?.plan;
+  // Aplatir et typer les modules pour l'affichage
+  const allModules = useMemo(() => {
+    if (!categoriesData) return [];
+    return categoriesData.flatMap(category => 
+      category.modules.map(module => ({
+        ...module,
+        category: {
+          id: category.id,
+          name: category.name,
+          description: category.description,
+          icon: category.icon,
+          color: category.color,
+          modules: [] // Pour éviter référence circulaire/trop lourde
+        }
+      }))
+    ) as DisplayModule[];
+  }, [categoriesData]);
 
   // Filtrer les modules
   const filteredModules = useMemo(() => {
-    if (!modulesData?.availableModules) return [];
-
-    let filtered = modulesData.availableModules;
+    let filtered = allModules;
 
     // Filtre par recherche
     if (searchQuery) {
@@ -316,15 +331,14 @@ export const MyGroupModules = () => {
     }
 
     return filtered;
-  }, [modulesData, searchQuery, categoryFilter]);
+  }, [allModules, searchQuery, categoryFilter]);
 
-  const handleLaunchModule = (module: ModuleWithCategory) => {
-    // Navigation vers le module (convention de nommage standard)
+  const handleLaunchModule = (module: DisplayModule) => {
     navigate(`/dashboard/modules/${module.slug}`);
   };
 
   // Gestion des erreurs
-  if (groupError) {
+  if (groupError || modulesError) {
     return (
       <div className="p-6">
         <div className="max-w-2xl mx-auto">
@@ -334,7 +348,9 @@ export const MyGroupModules = () => {
               <div>
                 <h3 className="font-semibold text-red-900 mb-1">Erreur de chargement</h3>
                 <p className="text-sm text-red-700">
-                  {groupError instanceof Error ? groupError.message : 'Impossible de charger vos informations'}
+                  {(groupError || modulesError) instanceof Error 
+                    ? (groupError || modulesError)?.message 
+                    : 'Impossible de charger vos informations'}
                 </p>
               </div>
             </div>
@@ -365,53 +381,37 @@ export const MyGroupModules = () => {
         </div>
       </div>
 
-      {/* Loading State - Groupe uniquement */}
-      {groupLoading && (
+      {/* Loading State */}
+      {isLoading && (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <Loader2 className="h-12 w-12 text-[#2A9D8F] animate-spin mx-auto mb-4" />
-            <p className="text-gray-600 font-medium">Chargement de vos informations...</p>
+            <p className="text-gray-600 font-medium">Chargement ultra-rapide...</p>
           </div>
         </div>
       )}
 
-      {/* Content - Afficher progressivement */}
-      {!groupLoading && currentGroup && (
+      {/* Content */}
+      {!isLoading && currentGroup && (
         <>
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {modulesLoading ? (
-              <Card className="p-6 animate-pulse">
-                <div className="h-12 w-12 bg-gray-200 rounded-lg mb-4"></div>
-                <div className="h-8 bg-gray-200 rounded mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-              </Card>
-            ) : (
-              <StatsCard
-                title="Modules Disponibles"
-                value={modulesData?.totalModules || 0}
-                icon={Package}
-                gradient="from-[#2A9D8F] to-[#1d7a6f]"
-                badge="Actifs"
-                delay={0.1}
-              />
-            )}
-            {categoriesLoading ? (
-              <Card className="p-6 animate-pulse">
-                <div className="h-12 w-12 bg-gray-200 rounded-lg mb-4"></div>
-                <div className="h-8 bg-gray-200 rounded mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-              </Card>
-            ) : (
-              <StatsCard
-                title="Catégories Métiers"
-                value={categoriesData?.totalCategories || 0}
-                icon={Layers}
-                gradient="from-purple-600 to-purple-700"
-                badge="Métiers"
-                delay={0.2}
-              />
-            )}
+            <StatsCard
+              title="Modules Disponibles"
+              value={allModules.length}
+              icon={Package}
+              gradient="from-[#2A9D8F] to-[#1d7a6f]"
+              badge="Actifs"
+              delay={0.1}
+            />
+            <StatsCard
+              title="Catégories Métiers"
+              value={categoriesData?.length || 0}
+              icon={Layers}
+              gradient="from-purple-600 to-purple-700"
+              badge="Métiers"
+              delay={0.2}
+            />
             <StatsCard
               title="Écoles du Réseau"
               value={currentGroup.schoolCount}
@@ -430,32 +430,26 @@ export const MyGroupModules = () => {
             />
           </div>
 
-          {/* Quick Actions Dock - "Opérations Fréquentes" (DYNAMIQUE) */}
+          {/* Quick Actions Dock */}
           <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
             <h2 className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wider flex items-center gap-2">
               <Rocket className="h-4 w-4" />
               Accès Rapide
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* Logique de sélection dynamique des modules favoris */}
               {(() => {
-                // 1. Définir les modules prioritaires à afficher s'ils sont disponibles
                 const prioritySlugs = ['gestion-inscriptions', 'finances', 'users', 'personnel'];
-                
-                // 2. Trouver les modules correspondants dans la liste des modules disponibles
                 const quickAccessModules = prioritySlugs
-                  .map(slug => modulesData?.availableModules?.find(m => m.slug === slug))
-                  .filter(Boolean) as ModuleWithCategory[];
+                  .map(slug => allModules.find(m => m.slug === slug))
+                  .filter(Boolean) as DisplayModule[];
 
-                // 3. Si on a moins de 4 modules, compléter avec d'autres modules disponibles
-                if (quickAccessModules.length < 4 && modulesData?.availableModules) {
-                  const otherModules = modulesData.availableModules
+                if (quickAccessModules.length < 4) {
+                  const otherModules = allModules
                     .filter(m => !prioritySlugs.includes(m.slug))
                     .slice(0, 4 - quickAccessModules.length);
                   quickAccessModules.push(...otherModules);
                 }
 
-                // 4. Si aucun module n'est disponible (cas rare), afficher un message ou vide
                 if (quickAccessModules.length === 0) {
                   return (
                     <div className="col-span-4 text-center text-sm text-gray-400 py-2">
@@ -464,7 +458,6 @@ export const MyGroupModules = () => {
                   );
                 }
 
-                // 5. Afficher les modules
                 return quickAccessModules.map((module) => (
                   <Button
                     key={module.id}
@@ -518,7 +511,7 @@ export const MyGroupModules = () => {
                   </p>
                   <div className="flex items-center gap-3">
                     <span className="text-sm text-gray-700 font-medium">Plan actuel :</span>
-                    <PlanBadge plan={dynamicPlan} />
+                    <PlanBadge plan={currentGroup.plan} />
                   </div>
                 </div>
               </div>
@@ -564,7 +557,7 @@ export const MyGroupModules = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Toutes les catégories</SelectItem>
-                {categoriesData?.categories.map((category) => (
+                {categoriesData?.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
                   </SelectItem>
@@ -601,64 +594,20 @@ export const MyGroupModules = () => {
 
           {/* Résultats */}
           <div>
-            {modulesLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <Loader2 className="h-8 w-8 text-[#2A9D8F] animate-spin mx-auto mb-3" />
-                  <p className="text-sm text-gray-600">Chargement des modules...</p>
-                </div>
+            {allModules.length === 0 ? (
+              <div className="text-center py-12">
+                <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun module disponible</h3>
+                <p className="text-gray-600 mb-4">
+                  Votre plan actuel ne vous donne accès à aucun module pour le moment.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsUpgradeDialogOpen(true)}
+                >
+                  Mettre à niveau votre plan
+                </Button>
               </div>
-            ) : (modulesData as any)?.error ? (
-              // Afficher un message d'erreur clair
-              <Card className="p-8 border-amber-200 bg-amber-50">
-                <div className="text-center">
-                  <AlertCircle className="h-16 w-16 text-amber-600 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    {(modulesData as any).error === 'NO_ACTIVE_SUBSCRIPTION' 
-                      ? 'Aucun abonnement actif'
-                      : 'Aucun module disponible'}
-                  </h3>
-                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                    {(modulesData as any).message}
-                  </p>
-                  
-                  {(modulesData as any).error === 'NO_ACTIVE_SUBSCRIPTION' ? (
-                    <div className="space-y-3">
-                      <p className="text-sm text-gray-700">
-                        Pour accéder aux modules, vous devez avoir un abonnement actif.
-                      </p>
-                      <Button
-                        onClick={() => setIsUpgradeDialogOpen(true)}
-                        className="bg-[#2A9D8F] hover:bg-[#238276] text-white"
-                      >
-                        <TrendingUp className="h-4 w-4 mr-2" />
-                        Souscrire à un plan
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <p className="text-sm text-gray-700">
-                        Le plan actuel n'a pas encore de modules assignés. Contactez le Super Admin pour configurer votre plan.
-                      </p>
-                      <div className="flex items-center justify-center gap-3">
-                        <Button
-                          onClick={() => window.location.reload()}
-                          variant="outline"
-                        >
-                          Actualiser
-                        </Button>
-                        <Button
-                          onClick={() => setIsUpgradeDialogOpen(true)}
-                          className="bg-[#2A9D8F] hover:bg-[#238276] text-white"
-                        >
-                          <TrendingUp className="h-4 w-4 mr-2" />
-                          Changer de plan
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </Card>
             ) : (
               <>
                 <div className="flex items-center justify-between mb-4">
@@ -703,10 +652,10 @@ export const MyGroupModules = () => {
               </>
             )}
 
-            {/* Aucun résultat */}
-            {filteredModules.length === 0 && (
+            {/* Aucun résultat de recherche */}
+            {allModules.length > 0 && filteredModules.length === 0 && (
               <div className="text-center py-12">
-                <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <Search className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun module trouvé</h3>
                 <p className="text-gray-600 mb-4">
                   Essayez de modifier vos critères de recherche
@@ -751,7 +700,8 @@ export const MyGroupModules = () => {
 
           {/* Nouveau Dialog Détails Module */}
           <ModuleDetailsDialog
-            module={selectedModule}
+            // @ts-ignore - Adaptation rapide du type
+            module={selectedModule as any}
             schoolGroupId={currentGroup.id}
             isOpen={!!selectedModule}
             onClose={() => setSelectedModule(null)}
@@ -762,9 +712,9 @@ export const MyGroupModules = () => {
             <PlanUpgradeRequestDialog
               currentPlan={{
                 id: currentGroup.id,
-                name: dynamicPlan.charAt(0).toUpperCase() + dynamicPlan.slice(1),
-                slug: dynamicPlan,
-                price: 50000, // Prix par défaut, sera récupéré depuis la BDD
+                name: currentGroup.plan.charAt(0).toUpperCase() + currentGroup.plan.slice(1),
+                slug: currentGroup.plan,
+                price: 50000, // Prix par défaut
               }}
               isOpen={isUpgradeDialogOpen}
               onClose={() => setIsUpgradeDialogOpen(false)}

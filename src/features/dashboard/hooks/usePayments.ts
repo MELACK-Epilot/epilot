@@ -1,9 +1,12 @@
 /**
- * Hook pour gérer les paiements
+ * Hooks pour la gestion des paiements
+ * Utilise les vues SQL pour les données enrichies
+ * AVEC TEMPS RÉEL SUPABASE
  * @module usePayments
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Payment } from '../types/dashboard.types';
 
@@ -212,14 +215,50 @@ export const usePaymentStats = () => {
         failed: stats?.failed_count || 0,
         refunded: stats?.refunded_count || 0,
         overdue: stats?.overdue_count || 0,
-        totalAmount: stats?.total_amount || 0,
-        completedAmount: stats?.completed_amount || 0,
-        pendingAmount: stats?.pending_amount || 0,
-        overdueAmount: stats?.overdue_amount || 0,
+        totalAmount: parseFloat(stats?.total_amount || 0),
+        completedAmount: parseFloat(stats?.completed_amount || 0),
+        pendingAmount: parseFloat(stats?.pending_amount || 0),
+        overdueAmount: parseFloat(stats?.overdue_amount || 0),
       };
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
+};
+
+/**
+ * Hook pour écouter les changements en temps réel sur les paiements
+ * Invalide automatiquement toutes les queries liées aux paiements
+ */
+export const usePaymentsRealtime = () => {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('payments-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'payments' },
+        (payload) => {
+          console.log('🔄 Changement détecté sur payments:', payload);
+          
+          // Invalider toutes les queries liées aux paiements
+          queryClient.invalidateQueries({ queryKey: paymentKeys.all });
+          queryClient.invalidateQueries({ queryKey: ['payment-stats'] });
+          queryClient.invalidateQueries({ queryKey: ['payment-monthly-stats'] });
+          
+          // Invalider aussi les stats financières globales
+          queryClient.invalidateQueries({ queryKey: ['financial'] });
+          queryClient.invalidateQueries({ queryKey: ['real-financial-stats'] });
+          queryClient.invalidateQueries({ queryKey: ['revenue-chart'] });
+          queryClient.invalidateQueries({ queryKey: ['financial-kpis'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 };
 
 export default usePayments;

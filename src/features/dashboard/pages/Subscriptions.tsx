@@ -19,7 +19,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { FinanceBreadcrumb, FinancePageHeader, FinanceModernStatsGrid, FinanceSearchBar, FinanceFilters, ModernStatCardData, FilterConfig } from '../components/finance';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useSubscriptions, useUpdateSubscription } from '../hooks/useSubscriptions';
+import { useSubscriptions, useUpdateSubscription, useChangeSubscriptionPlan } from '../hooks/useSubscriptions';
+import { usePlans } from '../hooks/usePlans';
 import { useSubscriptionHubKPIs } from '../hooks/useSubscriptionHubKPIs';
 import { useDeleteSubscription } from '../hooks/useDeleteSubscription';
 import { SubscriptionDetailsModal } from '../components/subscriptions/SubscriptionDetailsModal';
@@ -33,6 +34,7 @@ import { AddNoteModal } from '../components/subscriptions/AddNoteModal';
 import { SubscriptionHistoryModal } from '../components/subscriptions/SubscriptionHistoryModal';
 import { CreateSubscriptionModal } from '../components/subscriptions/CreateSubscriptionModal.v2';
 import { UpdatePaymentStatusModal } from '../components/subscriptions/UpdatePaymentStatusModal';
+import { SendReminderModal } from '../components/subscriptions/SendReminderModal';
 import { DeleteSubscriptionDialog } from '../components/subscriptions/DeleteSubscriptionDialog';
 import { Pagination } from '@/components/ui/pagination';
 import { format } from 'date-fns';
@@ -61,6 +63,7 @@ export const Subscriptions = () => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isUpdatePaymentOpen, setIsUpdatePaymentOpen] = useState(false);
+  const [isSendReminderOpen, setIsSendReminderOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
   // États de pagination
@@ -77,7 +80,9 @@ export const Subscriptions = () => {
   });
   
   const { data: hubKPIs, isLoading: hubKPIsLoading } = useSubscriptionHubKPIs();
+  const { data: plans } = usePlans({ status: 'active' });
   const { mutate: updateSubscription } = useUpdateSubscription();
+  const { mutate: changePlan } = useChangeSubscriptionPlan();
   const { mutate: deleteSubscription } = useDeleteSubscription();
   const { toast } = useToast();
 
@@ -191,7 +196,8 @@ export const Subscriptions = () => {
     suspended: subscriptions?.filter(s => s.status === 'suspended').length || 0,
     paymentPending: subscriptions?.filter(s => s.paymentStatus === 'pending').length || 0,
     overdue: subscriptions?.filter(s => s.paymentStatus === 'overdue').length || 0,
-    revenue: subscriptions?.reduce((acc, s) => acc + (s.status === 'active' && s.paymentStatus === 'paid' ? s.amount : 0), 0) || 0,
+    // Calcul basé sur le prix actuel du plan pour être cohérent avec l'affichage
+    revenue: subscriptions?.reduce((acc, s) => acc + (s.status === 'active' && s.paymentStatus === 'paid' ? (s.planPrice || 0) : 0), 0) || 0,
   }), [subscriptions]);
 
   // Fonction pour obtenir le badge de statut
@@ -213,7 +219,14 @@ export const Subscriptions = () => {
   };
 
   // Fonction pour obtenir le badge de paiement
-  const getPaymentBadge = (paymentStatus: string) => {
+  const getPaymentBadge = (paymentStatus: string, planPrice: number = 0, planName: string = '') => {
+    // Si le plan est gratuit (prix 0 ou nom contient Gratuit), on affiche un badge spécial
+    const isFree = planPrice === 0 || planName.toLowerCase().includes('gratuit');
+    
+    if (isFree) {
+      return <Badge className="bg-gray-100 text-gray-600 border-gray-200">Gratuit</Badge>;
+    }
+
     const configs = {
       paid: { color: 'bg-[#2A9D8F]/10 text-[#2A9D8F]', label: 'Payé' },
       pending: { color: 'bg-[#E9C46A]/10 text-[#E9C46A]', label: 'En attente' },
@@ -313,10 +326,9 @@ export const Subscriptions = () => {
   };
 
   const handleSendReminder = (id: string) => {
-    toast({
-      title: 'Relance envoyée',
-      description: 'Une relance de paiement a été envoyée au groupe.',
-    });
+    const subscription = subscriptions?.find(sub => sub.id === id);
+    setSelectedSubscription(subscription);
+    setIsSendReminderOpen(true);
   };
 
   const handleAddNote = (id: string) => {
@@ -351,13 +363,26 @@ export const Subscriptions = () => {
   };
 
   // Fonctions de confirmation
-  const handleModifyPlanConfirm = (subscriptionId: string, newPlanId: string, reason: string) => {
-    // Ici on devrait appeler une API pour modifier le plan
-    console.log('Modifier plan:', { subscriptionId, newPlanId, reason });
-    toast({
-      title: 'Plan modifié',
-      description: 'Le plan de l\'abonnement sera modifié.',
-    });
+  const handleModifyPlanConfirm = (subscriptionId: string, newPlanId: string, reason: string, immediate: boolean) => {
+    changePlan(
+      { subscriptionId, newPlanId, reason, immediate },
+      {
+        onSuccess: () => {
+          toast({
+            title: 'Plan modifié',
+            description: 'Le plan de l\'abonnement a été modifié avec succès.',
+          });
+          setIsModifyPlanOpen(false);
+        },
+        onError: () => {
+          toast({
+            title: 'Erreur',
+            description: 'Impossible de modifier le plan.',
+            variant: 'destructive',
+          });
+        },
+      }
+    );
   };
 
   const handleAddNoteConfirm = (subscriptionId: string, note: string, type: string) => {
@@ -435,6 +460,26 @@ export const Subscriptions = () => {
     setSelectedIds([]);
   }, [selectedIds, toast]);
 
+  // Gestion des actions depuis le Dashboard (Centre d'Action)
+  const handleAlertAction = useCallback((type: 'overdue' | 'expiring') => {
+    setStatusFilter('all');
+    setPlanFilter('all');
+    
+    if (type === 'overdue') {
+      // Filtrer pour afficher les paiements en retard OU en attente (car 'pending' est aussi une action requise)
+      setAdvancedFilters(prev => ({ ...prev, paymentStatus: 'pending' })); // On commence par pending qui est le plus fréquent
+      toast({
+        title: 'Action requise',
+        description: 'Affichage des abonnements nécessitant une validation de paiement.',
+      });
+    }
+    
+    // Scroll vers le tableau
+    setTimeout(() => {
+      document.getElementById('subscriptions-table')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }, []);
+
   // Fonctions d'export
   const handleExport = useCallback((format: 'csv' | 'excel' | 'pdf') => {
     try {
@@ -504,6 +549,7 @@ export const Subscriptions = () => {
       <SubscriptionHubDashboard 
         kpis={hubKPIs} 
         isLoading={hubKPIsLoading}
+        onActionClick={handleAlertAction}
         actions={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -684,7 +730,7 @@ export const Subscriptions = () => {
       </div>
 
       {/* Tableau des abonnements */}
-      <Card>
+      <Card id="subscriptions-table">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
@@ -792,15 +838,22 @@ export const Subscriptions = () => {
                       {getStatusBadge(subscription.status)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {getPaymentBadge(subscription.paymentStatus)}
+                      {getPaymentBadge(subscription.paymentStatus, subscription.planPrice, subscription.planName)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-gray-900">
-                        {subscription.amount.toLocaleString()} {subscription.currency}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {subscription.billingPeriod === 'monthly' ? '/mois' : '/an'}
-                      </div>
+                      {(subscription.planPrice === 0 || subscription.planName?.toLowerCase().includes('gratuit')) ? (
+                        <Badge variant="secondary" className="bg-gray-100 text-gray-600 border-gray-200">Gratuit</Badge>
+                      ) : (
+                        <>
+                          <div className="text-sm font-semibold text-gray-900">
+                            {/* Utilise TOUJOURS le prix actuel du plan (dynamique) */}
+                            {(subscription.planPrice || 0).toLocaleString()} {subscription.currency || 'FCFA'}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {subscription.billingPeriod === 'monthly' ? '/mois' : '/an'}
+                          </div>
+                        </>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-xs">
@@ -874,12 +927,7 @@ export const Subscriptions = () => {
         isOpen={isModifyPlanOpen}
         onClose={() => setIsModifyPlanOpen(false)}
         onConfirm={handleModifyPlanConfirm}
-        availablePlans={[
-          { id: 'gratuit', name: 'Gratuit', price: 0 },
-          { id: 'premium', name: 'Premium', price: 50000 },
-          { id: 'pro', name: 'Pro', price: 100000 },
-          { id: 'institutionnel', name: 'Institutionnel', price: 200000 },
-        ]}
+        availablePlans={plans || []}
       />
 
       {/* Modal d'ajout de note */}
@@ -896,6 +944,24 @@ export const Subscriptions = () => {
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
       />
+
+      {/* Modal de relance de paiement */}
+      {selectedSubscription && (
+        <SendReminderModal
+          subscription={selectedSubscription}
+          isOpen={isSendReminderOpen}
+          onClose={() => setIsSendReminderOpen(false)}
+        />
+      )}
+
+      {/* Modal de mise à jour du statut de paiement */}
+      {selectedSubscription && (
+        <UpdatePaymentStatusModal
+          subscription={selectedSubscription}
+          isOpen={isUpdatePaymentOpen}
+          onClose={() => setIsUpdatePaymentOpen(false)}
+        />
+      )}
 
       {/* Barre d'actions flottante pour sélection multiple */}
       {selectedIds.length > 0 && (
@@ -989,13 +1055,6 @@ export const Subscriptions = () => {
         onClose={() => setIsCreateOpen(false)}
       />
 
-      <ModifyPlanModal
-        isOpen={isModifyPlanOpen}
-        onClose={() => setIsModifyPlanOpen(false)}
-        subscription={selectedSubscription}
-        onConfirm={handleModifyPlanConfirm}
-      />
-
       <AddNoteModal
         isOpen={isAddNoteOpen}
         onClose={() => setIsAddNoteOpen(false)}
@@ -1007,13 +1066,6 @@ export const Subscriptions = () => {
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
         subscription={selectedSubscription}
-      />
-
-      {/* Modal de modification statut paiement */}
-      <UpdatePaymentStatusModal
-        subscription={selectedSubscription}
-        isOpen={isUpdatePaymentOpen}
-        onClose={() => setIsUpdatePaymentOpen(false)}
       />
 
       {/* Dialog de suppression */}

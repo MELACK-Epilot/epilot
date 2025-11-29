@@ -1,34 +1,35 @@
 /**
  * SubscriptionHubDashboard - Dashboard avancé du Hub Abonnements
- * Design premium avec glassmorphism et gradients 3 couleurs
+ * Design simplifié et focus sur les métriques essentielles (Actionable Metrics)
  * @module SubscriptionHubDashboard
  */
 
 import { Card } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 import { 
-  TrendingUp, 
-  Calendar, 
   AlertTriangle, 
   DollarSign,
-  BarChart3,
-  Clock,
   CheckCircle2,
-  Package
+  Package,
+  Users,
+  Activity
 } from 'lucide-react';
 import { SubscriptionHubKPIs } from '../../hooks/useSubscriptionHubKPIs';
+
+import { Button } from '@/components/ui/button';
 
 interface SubscriptionHubDashboardProps {
   kpis?: SubscriptionHubKPIs;
   isLoading?: boolean;
   actions?: React.ReactNode;
+  onActionClick?: (type: 'overdue' | 'expiring') => void;
 }
 
-export const SubscriptionHubDashboard = ({ kpis, isLoading, actions }: SubscriptionHubDashboardProps) => {
+export const SubscriptionHubDashboard = ({ kpis, isLoading, actions, onActionClick }: SubscriptionHubDashboardProps) => {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {Array.from({ length: 8 }).map((_, i) => (
+        {Array.from({ length: 4 }).map((_, i) => (
           <Card key={i} className="p-6">
             <div className="animate-pulse space-y-3">
               <div className="h-4 bg-gray-200 rounded w-1/2"></div>
@@ -53,69 +54,49 @@ export const SubscriptionHubDashboard = ({ kpis, isLoading, actions }: Subscript
     return value.toLocaleString();
   };
 
+  // Calcul des alertes totales (Expirations proches + Retards)
+  const totalAlerts = kpis.expiringIn30Days + kpis.overduePayments;
+
   const kpiCards = [
     {
-      title: 'MRR',
+      title: 'MRR Mensuel',
       value: `${formatCurrency(kpis.mrr)} FCFA`,
-      subtitle: 'Revenu Mensuel Récurrent',
+      subtitle: 'Revenu Récurrent',
       icon: DollarSign,
-      gradient: 'from-[#3B82F6] via-[#60A5FA] to-[#2563EB]',
-      trend: kpis.mrr > 0 ? { value: '+12%', positive: true } : undefined,
+      gradient: 'from-blue-600 to-blue-800',
+      shadow: 'shadow-blue-500/20',
+      info: 'Santé financière',
     },
     {
-      title: 'ARR',
-      value: `${formatCurrency(kpis.arr)} FCFA`,
-      subtitle: 'Revenu Annuel Récurrent',
-      icon: TrendingUp,
-      gradient: 'from-[#1D3557] via-[#2E5A7D] to-[#0F1F35]',
-      trend: kpis.arr > 0 ? { value: '+15%', positive: true } : undefined,
+      title: 'Abonnements Actifs',
+      value: kpis.totalActive.toString(),
+      subtitle: 'Clients payants & actifs',
+      icon: Users,
+      gradient: 'from-emerald-500 to-emerald-700',
+      shadow: 'shadow-emerald-500/20',
+      info: 'Base client active',
     },
     {
-      title: 'Taux de Renouvellement',
+      title: 'Taux de Rétention',
       value: `${kpis.renewalRate}%`,
-      subtitle: 'Abonnements renouvelés',
-      icon: CheckCircle2,
-      gradient: 'from-[#10B981] via-[#34D399] to-[#059669]',
-      trend: kpis.renewalRate >= 80 ? { value: 'Excellent', positive: true } : 
-             kpis.renewalRate >= 60 ? { value: 'Bon', positive: true } : 
-             { value: 'À améliorer', positive: false },
+      subtitle: 'Fidélité client',
+      icon: Activity,
+      gradient: 'from-violet-500 to-violet-700',
+      shadow: 'shadow-violet-500/20',
+      info: kpis.renewalRate >= 80 ? 'Excellent' : 'À surveiller',
     },
     {
-      title: 'Valeur Moyenne',
-      value: `${formatCurrency(kpis.averageSubscriptionValue)} FCFA`,
-      subtitle: 'Par abonnement',
-      icon: BarChart3,
-      gradient: 'from-[#8B5CF6] via-[#A78BFA] to-[#7C3AED]',
-    },
-    {
-      title: 'Expire dans 30j',
-      value: kpis.expiringIn30Days.toString(),
-      subtitle: 'Abonnements à renouveler',
+      title: 'Centre d\'Action',
+      value: totalAlerts.toString(),
+      subtitle: 'Actions requises',
       icon: AlertTriangle,
-      gradient: 'from-[#E63946] via-[#EF4444] to-[#C72030]',
-      alert: kpis.expiringIn30Days > 0,
-    },
-    {
-      title: 'Expire dans 60j',
-      value: kpis.expiringIn60Days.toString(),
-      subtitle: 'Abonnements à surveiller',
-      icon: Clock,
-      gradient: 'from-[#F59E0B] via-[#FBBF24] to-[#D97706]',
-    },
-    {
-      title: 'Expire dans 90j',
-      value: kpis.expiringIn90Days.toString(),
-      subtitle: 'Abonnements à anticiper',
-      icon: Calendar,
-      gradient: 'from-[#F4A261] via-[#FB923C] to-[#E76F51]',
-    },
-    {
-      title: 'Paiements en Retard',
-      value: kpis.overduePayments.toString(),
-      subtitle: `${formatCurrency(kpis.overdueAmount)} FCFA`,
-      icon: AlertTriangle,
-      gradient: 'from-[#DC2626] via-[#EF4444] to-[#991B1B]',
-      alert: kpis.overduePayments > 0,
+      gradient: totalAlerts > 0 ? 'from-red-500 to-red-700' : 'from-gray-500 to-gray-700',
+      shadow: totalAlerts > 0 ? 'shadow-red-500/20' : 'shadow-gray-500/20',
+      isAlert: true,
+      details: [
+        { label: 'Expire < 30j', value: kpis.expiringIn30Days, color: 'text-red-100' },
+        { label: 'Paiements retard', value: kpis.overduePayments, color: 'text-red-100' }
+      ]
     },
   ];
 
@@ -129,13 +110,13 @@ export const SubscriptionHubDashboard = ({ kpis, isLoading, actions }: Subscript
             Dashboard Hub Abonnements
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            Vue d'ensemble des métriques clés et indicateurs de performance
+            Vue synthétique des performances et actions prioritaires
           </p>
         </div>
         {actions && <div>{actions}</div>}
       </div>
 
-      {/* Grille des KPIs - Design Premium */}
+      {/* Grille des KPIs - Design Épuré et Professionnel */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {kpiCards.map((kpi, index) => {
           const Icon = kpi.icon;
@@ -148,46 +129,70 @@ export const SubscriptionHubDashboard = ({ kpis, isLoading, actions }: Subscript
               className="h-full"
             >
               <Card 
-                className={`group relative p-6 overflow-hidden border-0 shadow-xl hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer bg-gradient-to-br ${kpi.gradient} min-h-[200px] flex flex-col justify-between h-full`}
+                className={`relative p-6 overflow-hidden border-0 shadow-lg ${kpi.shadow} bg-gradient-to-br ${kpi.gradient} text-white h-full flex flex-col justify-between hover:scale-[1.02] transition-transform duration-300`}
               >
-                {/* Cercles décoratifs animés */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-12 -mb-12 group-hover:scale-150 transition-transform duration-700"></div>
+                {/* Design de fond subtil */}
+                <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8 blur-xl"></div>
                 
-                <div className="relative z-10 space-y-3">
-                  {/* Header avec icône glassmorphism */}
-                  <div className="flex items-center justify-between">
-                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-                      <Icon className="w-7 h-7 text-white/90" />
+                <div className="relative z-10">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-lg">
+                      <Icon className="w-6 h-6 text-white" />
                     </div>
-                    {kpi.trend && (
-                      <div className="px-3 py-1.5 rounded-full bg-white/15 backdrop-blur-sm shadow-lg flex items-center gap-1">
-                        <TrendingUp className="w-3.5 h-3.5 text-white/90" />
-                        <span className="text-xs font-bold text-white/90">{kpi.trend.value}</span>
-                      </div>
-                    )}
-                    {kpi.alert && (
-                      <div className="px-3 py-1.5 rounded-full bg-white/15 backdrop-blur-sm shadow-lg animate-pulse">
-                        <span className="text-xs font-bold text-white/90">⚠ Action</span>
+                    {kpi.isAlert && totalAlerts > 0 && (
+                      <div className="px-2.5 py-1 bg-white/20 backdrop-blur-md rounded-full animate-pulse">
+                        <span className="text-xs font-bold">Attention</span>
                       </div>
                     )}
                   </div>
 
-                  {/* Titre */}
                   <div>
-                    <p className="text-white/70 text-sm font-semibold tracking-wide uppercase">{kpi.title}</p>
-                    <p className="text-4xl font-extrabold text-white drop-shadow-lg mt-2">{kpi.value}</p>
+                    <p className="text-sm font-medium text-white/80 uppercase tracking-wide">{kpi.title}</p>
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <h3 className="text-3xl font-bold text-white">{kpi.value}</h3>
+                    </div>
+                    <p className="text-xs text-white/70 mt-1">{kpi.subtitle}</p>
                   </div>
 
-                  {/* Sous-titre */}
-                  <p className="text-white/60 text-xs font-medium">{kpi.subtitle}</p>
+                  {/* Détails pour la carte d'alerte */}
+                  {kpi.details && (
+                    <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
+                      <div className="space-y-1">
+                        {kpi.details.map((detail, i) => (
+                          <div key={i} className="flex justify-between text-xs">
+                            <span className="text-white/80">{detail.label}</span>
+                            <span className="font-bold text-white">{detail.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {kpi.isAlert && totalAlerts > 0 && onActionClick && (
+                        <Button 
+                          size="sm" 
+                          variant="secondary" 
+                          className="w-full text-xs h-7 bg-white/20 hover:bg-white/30 text-white border-0"
+                          onClick={() => onActionClick('overdue')}
+                        >
+                          Gérer les alertes
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Info pour les autres cartes */}
+                  {kpi.info && !kpi.details && (
+                    <div className="mt-4 pt-4 border-t border-white/10">
+                      <span className="text-xs font-medium text-white/90 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> {kpi.info}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </Card>
             </motion.div>
           );
         })}
       </div>
-
     </div>
   );
 };

@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { Plus, Download, DollarSign, CheckCircle2, Clock, XCircle, PieChart as PieChartIcon, BarChart3, Eye, Edit, Trash2 } from 'lucide-react';
+import { Plus, Download, DollarSign, CheckCircle2, Clock, XCircle, PieChart as PieChartIcon, BarChart3, Eye, Trash2, TrendingUp, TrendingDown, AlertTriangle, Target } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FinanceBreadcrumb, FinancePageHeader } from '../components/finance';
 import { ModernDataTable } from '../components/shared/ModernDataTable';
 import { ChartCard } from '../components/shared/ChartCard';
-import { useExpenses, useExpenseStats, useCreateExpense, useUpdateExpense, useDeleteExpense } from '../hooks/useExpenses';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { useExpenses, useExpenseStats, useCreateExpense, useUpdateExpense, useDeleteExpense, useExpensesByCategory, useExpensesMonthly, useExpensesRealtime } from '../hooks/useExpenses';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import { CreateExpenseModal, ExportModal, SuccessModal, ExpenseDetailsModal, DeleteConfirmModal, ApproveConfirmModal } from '../components/expenses/ExpenseModals';
 import { BulkExpenseActions } from '../components/expenses/BulkExpenseActions';
@@ -53,7 +51,10 @@ export const Expenses = () => {
   // États sélection multiple
   const [selectedExpenses, setSelectedExpenses] = useState<any[]>([]);
 
-  // Hooks pour données réelles
+  // Activer le temps réel pour les mises à jour automatiques
+  useExpensesRealtime();
+
+  // Hooks pour données réelles (dynamiques)
   const { data: expenses, refetch } = useExpenses({
     query: searchQuery,
     category: categoryFilter !== 'all' ? categoryFilter : undefined,
@@ -61,47 +62,11 @@ export const Expenses = () => {
   });
 
   const { data: stats } = useExpenseStats();
+  const { data: categoryData } = useExpensesByCategory();
+  const { data: monthlyData } = useExpensesMonthly();
   const createExpense = useCreateExpense();
   const updateExpense = useUpdateExpense();
   const deleteExpense = useDeleteExpense();
-
-  // Données par catégorie
-  const { data: categoryData } = useQuery({
-    queryKey: ['expenses-by-category'],
-    queryFn: async () => {
-      // @ts-expect-error - Vue expenses_by_category créée par SQL
-      const { data, error } = await supabase
-        .from('expenses_by_category')
-        .select('*');
-
-      if (error) {
-        console.warn('Erreur catégories:', error);
-        return [];
-      }
-      return data || [];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Données mensuelles
-  const { data: monthlyData } = useQuery({
-    queryKey: ['expenses-monthly'],
-    queryFn: async () => {
-      // @ts-expect-error - Vue expenses_monthly créée par SQL
-      const { data, error } = await supabase
-        .from('expenses_monthly')
-        .select('*')
-        .order('month', { ascending: false })
-        .limit(6);
-
-      if (error) {
-        console.warn('Erreur mensuel:', error);
-        return [];
-      }
-      return (data || []).reverse();
-    },
-    staleTime: 5 * 60 * 1000,
-  });
 
   // Préparer données graphique
   const chartData = (monthlyData || []).map((stat: any) => ({
@@ -420,77 +385,113 @@ export const Expenses = () => {
         }
       />
 
-      {/* KPIs */}
+      {/* KPIs Améliorés */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Dépenses */}
-        <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-start justify-between mb-4">
-            <div className="p-3 bg-white/20 rounded-lg">
-              <DollarSign className="w-6 h-6" />
+        <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-5 text-white shadow-lg">
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-2.5 bg-white/20 rounded-lg">
+              <DollarSign className="w-5 h-5" />
             </div>
+            <span className="text-xs bg-white/20 px-2 py-1 rounded-full">{stats?.count || 0} dépenses</span>
           </div>
-          <div>
-            <p className="text-white/80 text-sm mb-1">Total Dépenses</p>
-            <p className="text-3xl font-bold">{((stats?.total || 0) / 1000).toFixed(0)}K</p>
-            <p className="text-white/70 text-sm mt-1">FCFA</p>
-            <p className="text-white/60 text-xs mt-2">{stats?.count || 0} dépenses</p>
-          </div>
+          <p className="text-white/80 text-sm mb-1">Total Dépenses</p>
+          <p className="text-2xl font-bold">{((stats?.total || 0) / 1000).toFixed(0)}K</p>
+          <p className="text-white/70 text-xs mt-1">FCFA</p>
         </div>
 
-        {/* Mois en cours */}
-        <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-start justify-between mb-4">
-            <div className="p-3 bg-white/20 rounded-lg">
-              <BarChart3 className="w-6 h-6" />
+        {/* Mois en cours avec tendance */}
+        <div className="bg-gradient-to-br from-teal-600 to-teal-700 rounded-xl p-5 text-white shadow-lg">
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-2.5 bg-white/20 rounded-lg">
+              <BarChart3 className="w-5 h-5" />
             </div>
+            {monthlyData && monthlyData.length > 1 && (
+              <div className={`flex items-center text-xs px-2 py-1 rounded-full ${parseFloat(monthlyData[monthlyData.length-1]?.growth_rate || 0) > 0 ? 'bg-red-500/30' : 'bg-green-500/30'}`}>
+                {parseFloat(monthlyData[monthlyData.length-1]?.growth_rate || 0) > 0 ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+                {Math.abs(parseFloat(monthlyData[monthlyData.length-1]?.growth_rate || 0)).toFixed(0)}%
+              </div>
+            )}
           </div>
-          <div>
-            <p className="text-white/80 text-sm mb-1">Mois en cours</p>
-            <p className="text-3xl font-bold">{((stats?.thisMonth || 0) / 1000).toFixed(0)}K</p>
-            <p className="text-white/70 text-sm mt-1">FCFA</p>
-          </div>
+          <p className="text-white/80 text-sm mb-1">Mois en cours</p>
+          <p className="text-2xl font-bold">{((stats?.thisMonth || 0) / 1000).toFixed(0)}K</p>
+          <p className="text-white/70 text-xs mt-1">FCFA</p>
         </div>
 
         {/* En attente */}
-        <div className="bg-gradient-to-br from-yellow-600 to-yellow-700 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-start justify-between mb-4">
-            <div className="p-3 bg-white/20 rounded-lg">
-              <Clock className="w-6 h-6" />
+        <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-5 text-white shadow-lg">
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-2.5 bg-white/20 rounded-lg">
+              <Clock className="w-5 h-5" />
             </div>
+            {(stats?.pendingCount || 0) > 0 && (
+              <span className="text-xs bg-white/20 px-2 py-1 rounded-full flex items-center">
+                <AlertTriangle className="w-3 h-3 mr-1" /> À traiter
+              </span>
+            )}
           </div>
-          <div>
-            <p className="text-white/80 text-sm mb-1">En attente</p>
-            <p className="text-3xl font-bold">{stats?.pendingCount || 0}</p>
-            <p className="text-white/70 text-sm mt-1">{((stats?.pending || 0) / 1000).toFixed(0)}K FCFA</p>
-          </div>
+          <p className="text-white/80 text-sm mb-1">En attente</p>
+          <p className="text-2xl font-bold">{stats?.pendingCount || 0}</p>
+          <p className="text-white/70 text-xs mt-1">{((stats?.pending || 0) / 1000).toFixed(0)}K FCFA</p>
         </div>
 
         {/* Payées */}
-        <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-start justify-between mb-4">
-            <div className="p-3 bg-white/20 rounded-lg">
-              <CheckCircle2 className="w-6 h-6" />
+        <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-xl p-5 text-white shadow-lg">
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-2.5 bg-white/20 rounded-lg">
+              <CheckCircle2 className="w-5 h-5" />
             </div>
           </div>
-          <div>
-            <p className="text-white/80 text-sm mb-1">Payées</p>
-            <p className="text-3xl font-bold">{stats?.paidCount || 0}</p>
-            <p className="text-white/70 text-sm mt-1">{((stats?.paid || 0) / 1000).toFixed(0)}K FCFA</p>
-          </div>
+          <p className="text-white/80 text-sm mb-1">Payées</p>
+          <p className="text-2xl font-bold">{stats?.paidCount || 0}</p>
+          <p className="text-white/70 text-xs mt-1">{((stats?.paid || 0) / 1000).toFixed(0)}K FCFA</p>
         </div>
 
         {/* Taux de paiement */}
-        <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-start justify-between mb-4">
-            <div className="p-3 bg-white/20 rounded-lg">
-              <PieChartIcon className="w-6 h-6" />
+        <div className="bg-gradient-to-br from-violet-600 to-violet-700 rounded-xl p-5 text-white shadow-lg">
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-2.5 bg-white/20 rounded-lg">
+              <Target className="w-5 h-5" />
             </div>
+            <span className={`text-xs px-2 py-1 rounded-full ${(stats?.paymentRate || 0) >= 80 ? 'bg-green-500/30' : (stats?.paymentRate || 0) >= 50 ? 'bg-yellow-500/30' : 'bg-red-500/30'}`}>
+              {(stats?.paymentRate || 0) >= 80 ? 'Excellent' : (stats?.paymentRate || 0) >= 50 ? 'Moyen' : 'Faible'}
+            </span>
           </div>
+          <p className="text-white/80 text-sm mb-1">Taux de paiement</p>
+          <p className="text-2xl font-bold">{(stats?.paymentRate || 0).toFixed(0)}%</p>
+          <p className="text-white/70 text-xs mt-1">des dépenses</p>
+        </div>
+      </div>
+
+      {/* Alertes Intelligentes */}
+      {((stats?.pendingCount || 0) > 3 || (stats?.pending || 0) > 100000) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
           <div>
-            <p className="text-white/80 text-sm mb-1">Taux de paiement</p>
-            <p className="text-3xl font-bold">{(stats?.paymentRate || 0).toFixed(0)}%</p>
-            <p className="text-white/70 text-sm mt-1">des dépenses</p>
+            <p className="font-semibold text-amber-800">Attention : Dépenses en attente</p>
+            <p className="text-sm text-amber-700">
+              Vous avez {stats?.pendingCount || 0} dépense(s) en attente pour un total de {((stats?.pending || 0) / 1000).toFixed(0)}K FCFA. 
+              Pensez à les valider pour maintenir une bonne gestion financière.
+            </p>
           </div>
+        </div>
+      )}
+
+      {/* Top Catégories */}
+      <div className="bg-white rounded-xl border p-4">
+        <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <PieChartIcon className="w-5 h-5 text-violet-600" />
+          Répartition par Catégorie
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          {(categoryData || []).slice(0, 7).map((cat: any) => (
+            <div key={cat.category} className="text-center p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+              <div className="text-2xl mb-1">{CATEGORIES[cat.category as keyof typeof CATEGORIES]?.icon || '📋'}</div>
+              <p className="text-xs text-gray-500 truncate">{cat.category_label}</p>
+              <p className="font-bold text-gray-900">{((cat.total_amount || 0) / 1000).toFixed(0)}K</p>
+              <p className="text-xs text-gray-400">{parseFloat(cat.percentage_of_total || 0).toFixed(0)}%</p>
+            </div>
+          ))}
         </div>
       </div>
 

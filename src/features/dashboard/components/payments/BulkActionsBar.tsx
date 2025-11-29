@@ -5,7 +5,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, RefreshCw, Download, X, Mail } from 'lucide-react';
+import { CheckCircle2, RefreshCw, Download, X, Mail, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface BulkActionsBarProps {
@@ -14,6 +14,7 @@ interface BulkActionsBarProps {
   onRefund?: () => void;
   onExport?: () => void;
   onSendEmail?: () => void;
+  onDelete?: () => void;
   onClear?: () => void;
   isLoading?: boolean;
 }
@@ -24,6 +25,7 @@ export const BulkActionsBar = ({
   onRefund,
   onExport,
   onSendEmail,
+  onDelete,
   onClear,
   isLoading = false,
 }: BulkActionsBarProps) => {
@@ -104,6 +106,19 @@ export const BulkActionsBar = ({
                 >
                   <Download className="w-4 h-4 mr-2" />
                   Exporter
+                </Button>
+              )}
+
+              {onDelete && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onDelete}
+                  disabled={isLoading}
+                  className="border-red-300 text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Supprimer
                 </Button>
               )}
             </div>

@@ -14,74 +14,85 @@ import { Card } from '@/components/ui/card';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { useAdminGroupStats } from '../hooks/useAdminGroupStats';
 
+// Variantes d'animation
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: { type: "spring", stiffness: 100, damping: 15 }
+  }
+};
+
 export default function GroupDashboard() {
   const { data: stats } = useAdminGroupStats();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F9F9F9]">
       {/* Contenu Principal */}
-      <div className="px-6 py-6 space-y-6">
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="px-6 py-6 space-y-6"
+      >
         {/* WelcomeCard Compacte */}
-        <GroupWelcomeCard />
+        <motion.div variants={itemVariants}>
+          <GroupWelcomeCard />
+        </motion.div>
+
         {/* KPIs Principaux */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
+        <motion.div variants={itemVariants}>
           <StatsWidget />
         </motion.div>
 
         {/* Actions Rapides */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
+        <motion.div variants={itemVariants}>
           <div className="mb-4">
-            <h2 className="text-lg font-bold text-gray-900">Actions Rapides</h2>
+            <h2 className="text-lg font-bold text-[#1D3557]">Actions Rapides</h2>
             <p className="text-sm text-gray-600">Accédez rapidement à vos fonctionnalités principales</p>
           </div>
           <QuickActionsGrid />
         </motion.div>
 
         {/* Activité et Alertes */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-6"
-        >
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Activité Récente - 2/3 */}
-          <div className="lg:col-span-2">
+          <motion.div variants={itemVariants} className="lg:col-span-2">
             <RecentActivityFeed />
-          </div>
+          </motion.div>
 
           {/* Alertes - 1/3 */}
-          <div>
+          <motion.div variants={itemVariants}>
             <AlertsWidget />
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
 
         {/* Tendances et Insights */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6"
-        >
+        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Tendance Élèves - Données Réelles */}
-          <Card className={`p-6 bg-gradient-to-br ${(stats?.trends.students || 0) >= 0 ? 'from-[#2A9D8F]/5' : 'from-[#E63946]/5'} to-white border-${(stats?.trends.students || 0) >= 0 ? '[#2A9D8F]' : '[#E63946]'}/20`}>
+          <Card className={`p-6 bg-gradient-to-br ${(stats?.trends.students || 0) >= 0 ? 'from-[#2A9D8F]/5' : 'from-[#E63946]/5'} to-white border border-${(stats?.trends.students || 0) >= 0 ? '[#2A9D8F]/20' : '[#E63946]/20'} shadow-sm hover:shadow-md transition-shadow`}>
             <div className="flex items-start gap-4">
-              <div className={`p-3 ${(stats?.trends.students || 0) >= 0 ? 'bg-[#2A9D8F]' : 'bg-[#E63946]'} rounded-xl shadow-lg`}>
+              <div className={`p-3 ${(stats?.trends.students || 0) >= 0 ? 'bg-[#2A9D8F]' : 'bg-[#E63946]'} rounded-xl shadow-lg text-white`}>
                 {(stats?.trends.students || 0) >= 0 ? (
-                  <TrendingUp className="w-6 h-6 text-white" />
+                  <TrendingUp className="w-6 h-6" />
                 ) : (
-                  <TrendingDown className="w-6 h-6 text-white" />
+                  <TrendingDown className="w-6 h-6" />
                 )}
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-bold text-gray-900 mb-1">
+                <h3 className="text-lg font-bold text-[#1D3557] mb-1">
                   {(stats?.trends.students || 0) >= 0 ? 'Croissance Positive' : 'Attention Requise'}
                 </h3>
                 <p className="text-sm text-gray-600 mb-3">
@@ -92,11 +103,13 @@ export default function GroupDashboard() {
                   ce mois
                 </p>
                 <div className="flex items-center gap-4 text-xs text-gray-600">
-                  <div>
-                    <span className="font-semibold text-gray-900">{stats?.totalStudents || 0}</span> élèves
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-[#1D3557]"></div>
+                    <span className="font-semibold text-[#1D3557]">{stats?.totalStudents || 0}</span> élèves
                   </div>
-                  <div>
-                    <span className="font-semibold text-gray-900">{stats?.totalStaff || 0}</span> personnel
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-[#E9C46A]"></div>
+                    <span className="font-semibold text-[#1D3557]">{stats?.totalStaff || 0}</span> personnel
                   </div>
                 </div>
               </div>
@@ -104,13 +117,13 @@ export default function GroupDashboard() {
           </Card>
 
           {/* Recommandation Intelligente */}
-          <Card className="p-6 bg-gradient-to-br from-[#1D3557]/5 to-white border-[#1D3557]/20">
+          <Card className="p-6 bg-gradient-to-br from-[#1D3557]/5 to-white border border-[#1D3557]/10 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-[#1D3557] rounded-xl shadow-lg">
-                <TrendingUp className="w-6 h-6 text-white" />
+              <div className="p-3 bg-[#1D3557] rounded-xl shadow-lg text-white">
+                <TrendingUp className="w-6 h-6" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-bold text-gray-900 mb-1">
+                <h3 className="text-lg font-bold text-[#1D3557] mb-1">
                   Recommandation
                 </h3>
                 <p className="text-sm text-gray-600 mb-3">
@@ -122,10 +135,10 @@ export default function GroupDashboard() {
                   }
                 </p>
                 <div className="flex items-center gap-3 text-xs text-gray-600">
-                  <div className="px-2 py-1 bg-[#1D3557]/10 rounded">
+                  <div className="px-2 py-1 bg-[#1D3557]/10 rounded text-[#1D3557]">
                     <span className="font-semibold">{stats?.totalSchools || 0}</span> écoles
                   </div>
-                  <div className="px-2 py-1 bg-[#1D3557]/10 rounded">
+                  <div className="px-2 py-1 bg-[#1D3557]/10 rounded text-[#1D3557]">
                     Ratio: <span className="font-semibold">{((stats?.totalStudents || 0) / (stats?.totalStaff || 1)).toFixed(1)}</span> élèves/staff
                   </div>
                 </div>
@@ -133,7 +146,7 @@ export default function GroupDashboard() {
             </div>
           </Card>
         </motion.div>
-      </div>
+      </motion.div>
     </div>
   );
 }

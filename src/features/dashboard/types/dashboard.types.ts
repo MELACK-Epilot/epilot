@@ -121,6 +121,7 @@ export interface Subscription {
   planId: string;
   planName: string;
   planSlug: SubscriptionPlan;
+  planPrice?: number; // Ajouté pour la cohérence des prix
   status: 'active' | 'expired' | 'cancelled' | 'pending' | 'trial' | 'suspended';
   startDate: string;
   endDate: string;
@@ -138,6 +139,7 @@ export interface Subscription {
   cancelledAt?: string;
   cancelledBy?: string;
   cancelReason?: string;
+  schoolsCount?: number; // Nombre d'écoles dans le groupe
   createdAt: string;
   updatedAt: string;
 }

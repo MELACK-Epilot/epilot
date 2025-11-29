@@ -15,10 +15,10 @@ const SchoolGroups = lazy(() => import('../pages/SchoolGroups'));
 // Pages à implémenter
 const Users = lazy(() => import('../pages/Users'));
 const Categories = lazy(() => import('../pages/Categories'));
-const Plans = lazy(() => import('../pages/PlansUltimate'));
+const Plans = lazy(() => import('../pages/PlansSimplified'));
 const Modules = lazy(() => import('../pages/Modules'));
 const Finances = lazy(() => import('../pages/Finances'));
-const Communication = lazy(() => import('../pages/Communication'));
+const Communication = lazy(() => import('../pages/CommunicationHub'));
 const Reports = lazy(() => import('../pages/Reports'));
 const ActivityLogs = lazy(() => import('../pages/ActivityLogs'));
 const Trash = lazy(() => import('../pages/Trash'));

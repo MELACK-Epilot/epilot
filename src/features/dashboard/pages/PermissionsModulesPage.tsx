@@ -1,119 +1,74 @@
 /**
- * Page Permissions & Modules - VERSION DÉDIÉE
- * Gestion complète des permissions et assignations de modules
+ * Page Permissions & Modules - VERSION SIMPLIFIÉE
+ * Focus unique sur la gestion des accès et rôles
  * @module PermissionsModulesPage
  */
 
 import { useState, useMemo } from 'react';
-import { Shield, Grid3x3, UserCog, History, RefreshCw, Download, FileText, FileSpreadsheet, ChevronDown, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Shield, RefreshCw, Users, ShieldCheck, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AnimatedSection } from '@/components/ui/animated-section';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/store/auth.store';
 import { useUsers } from '../hooks/useUsers';
-import { useSchoolGroupModules } from '../hooks/useSchoolGroupModules';
-import { useAssignmentStats } from '../hooks/useAssignmentStats';
-import { useExportPermissions, useFetchExportData } from '../hooks/useModuleManagement';
-import { exportToExcel, exportToPDF } from '../utils/exportUtils';
+import { useRoleStats } from '../hooks/useRoleStats';
+import { useAccessProfiles } from '../hooks/useAccessProfiles';
 import { toast } from 'sonner';
 
-// Composants d'onglets
-import { MatrixPermissionsView } from '../components/permissions/MatrixPermissionsView';
+// Composants
 import { ProfilesPermissionsView } from '../components/permissions/ProfilesPermissionsView';
-import { HistoryPermissionsView } from '../components/permissions/HistoryPermissionsView';
 
 export default function PermissionsModulesPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('profiles');
+  const navigate = useNavigate();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
 
   // Data
-  const { data: usersData, isLoading: usersLoading, refetch } = useUsers({
-    schoolGroupId: user?.schoolGroupId,
-  });
+  const { refetch } = useUsers({ schoolGroupId: user?.schoolGroupId });
+  const { data: roleStats, refetch: refetchStats } = useRoleStats();
+  const { data: profiles, refetch: refetchProfiles } = useAccessProfiles();
 
-  const { data: modulesData } = useSchoolGroupModules(user?.schoolGroupId);
-  const { data: assignmentStats } = useAssignmentStats(user?.schoolGroupId);
+  // Calcul des KPIs avancés
+  const kpis = useMemo(() => {
+    if (!roleStats || !profiles) return {
+      totalUsers: 0,
+      totalRoles: 0,
+      configuredRoles: 0,
+      mostPopularRole: null,
+      leastPopularRole: null
+    };
 
-  const users = usersData?.users || [];
-  const modules = modulesData?.availableModules || [];
+    const totalUsers = Object.values(roleStats).reduce((a, b) => a + b, 0);
+    const totalRoles = profiles.length;
+    const configuredRoles = profiles.filter((p: any) => Object.keys(p.permissions || {}).length > 0).length;
 
-  // Stats globales
-  const stats = useMemo(() => {
-    const totalUsers = users.filter(u => u.role !== 'super_admin').length;
-    const usersWithModules = assignmentStats?.usersWithModules || 0;
-    const usersWithoutModules = totalUsers - usersWithModules;
-    const coverageRate = totalUsers > 0 ? Math.round((usersWithModules / totalUsers) * 100) : 0;
+    // Trouver le rôle le plus utilisé
+    let maxCount = -1;
+    let mostPopularCode = '';
+    Object.entries(roleStats).forEach(([code, count]) => {
+      if (count > maxCount) {
+        maxCount = count;
+        mostPopularCode = code;
+      }
+    });
+    const mostPopularRole = profiles.find((p: any) => p.code === mostPopularCode);
 
     return {
       totalUsers,
-      usersWithModules,
-      usersWithoutModules,
-      coverageRate
+      totalRoles,
+      configuredRoles,
+      mostPopularRole: mostPopularRole ? {
+        name: mostPopularRole.name_fr,
+        count: maxCount
+      } : null
     };
-  }, [users, assignmentStats]);
-
-  const exportPermissions = useExportPermissions();
-  const fetchExportData = useFetchExportData();
-
-  const handleExport = async (format: 'csv' | 'excel' | 'pdf') => {
-    if (!user?.schoolGroupId) {
-      toast.error('Impossible d\'exporter', {
-        description: 'Groupe scolaire non identifié'
-      });
-      return;
-    }
-
-    setIsExporting(true);
-    const formatLabels = {
-      csv: 'CSV',
-      excel: 'Excel',
-      pdf: 'PDF'
-    };
-
-    try {
-      toast.loading(`Export ${formatLabels[format]} en cours...`, { id: 'export' });
-      
-      if (format === 'csv') {
-        await exportPermissions(user.schoolGroupId);
-      } else if (format === 'excel') {
-        const data = await fetchExportData(user.schoolGroupId);
-        exportToExcel(data, 'Groupe Scolaire');
-      } else if (format === 'pdf') {
-        const data = await fetchExportData(user.schoolGroupId);
-        exportToPDF(data, 'Groupe Scolaire');
-      }
-      
-      toast.success(`Export ${formatLabels[format]} réussi!`, { 
-        id: 'export',
-        description: `Le fichier ${formatLabels[format]} a été téléchargé`
-      });
-    } catch (error: any) {
-      toast.error('Erreur lors de l\'export', {
-        id: 'export',
-        description: error.message
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
+  }, [roleStats, profiles]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await refetch();
-      toast.success('Données actualisées!', {
-        description: 'Les informations ont été rechargées'
-      });
+      await Promise.all([refetch(), refetchStats(), refetchProfiles()]);
+      toast.success('Données actualisées');
     } catch (error) {
       toast.error('Erreur lors de l\'actualisation');
     } finally {
@@ -122,179 +77,112 @@ export default function PermissionsModulesPage() {
   };
 
   return (
-    <div className="space-y-6 p-6 max-w-[1800px] mx-auto">
-      {/* Header */}
-      <AnimatedSection>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-[#2A9D8F] to-[#238b7e] rounded-2xl flex items-center justify-center shadow-lg">
-                <Shield className="w-6 h-6 text-white" />
-              </div>
-              Gestion des Rôles & Sécurité
-            </h1>
-            <p className="text-sm text-gray-500 mt-2">
-              Définissez les modèles d'accès et auditez la sécurité de votre établissement
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={handleRefresh}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              disabled={isRefreshing}
-            >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Actualisation...' : 'Actualiser'}
-            </Button>
-            
-            {/* Menu Export */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  disabled={isExporting}
-                >
-                  <Download className="h-4 w-4" />
-                  {isExporting ? 'Export...' : 'Exporter Audit'}
-                  <ChevronDown className="h-3 w-3 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => handleExport('pdf')} className="gap-2 cursor-pointer">
-                  <FileText className="h-4 w-4 text-red-500" />
-                  <div>
-                    <div className="font-medium">Rapport PDF</div>
-                    <div className="text-xs text-gray-500">Format officiel</div>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('excel')} className="gap-2 cursor-pointer">
-                  <FileSpreadsheet className="h-4 w-4 text-green-600" />
-                  <div>
-                    <div className="font-medium">Audit Excel</div>
-                    <div className="text-xs text-gray-500">Pour analyse</div>
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+    <div className="space-y-8 p-6 max-w-[1800px] mx-auto">
+      {/* Header Simplifié */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#2A9D8F]/10 rounded-xl flex items-center justify-center">
+              <Shield className="w-6 h-6 text-[#2A9D8F]" />
+            </div>
+            Gestion des Accès
+          </h1>
+          <p className="text-gray-500 mt-2 text-lg">
+            Définissez les permissions pour chaque rôle (Enseignant, Comptable, etc.)
+          </p>
         </div>
-      </AnimatedSection>
 
-      {/* KPIs de Sécurité */}
-      <AnimatedSection delay={0.1}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Taux de Couverture (Sécurité) */}
-          <Card className="p-6 bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all">
+        <Button
+          onClick={handleRefresh}
+          variant="ghost"
+          size="sm"
+          className="gap-2 text-gray-500 hover:text-[#2A9D8F]"
+          disabled={isRefreshing}
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Actualiser
+        </Button>
+      </div>
+
+      {/* KPIs Concrets - Design Premium */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Carte Utilisateurs - Bleu */}
+        <Card 
+          onClick={() => navigate('/dashboard/users')}
+          className="relative overflow-hidden border-0 shadow-md bg-gradient-to-br from-blue-500 to-blue-600 p-6 hover:shadow-xl transition-all group cursor-pointer transform hover:scale-[1.02]"
+        >
+          <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 transition-transform duration-500 group-hover:scale-150" />
+          <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-                <Shield className="w-6 h-6 text-blue-600" />
+              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                <Users className="w-6 h-6 text-white" />
               </div>
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${stats.coverageRate === 100 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                {stats.coverageRate === 100 ? 'Optimal' : 'Attention'}
+              <span className="text-xs font-medium bg-white/20 text-white px-2 py-1 rounded-full backdrop-blur-sm border border-white/10">
+                Actifs
               </span>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Conformité des Accès</p>
-              <h3 className="text-2xl font-bold text-gray-900 mt-1">{stats.coverageRate}%</h3>
-              <p className="text-xs text-gray-500 mt-1">
-                {stats.usersWithoutModules} utilisateurs nécessitent une configuration
-              </p>
+              <p className="text-white/80 text-sm font-medium uppercase tracking-wider mb-1">Utilisateurs Gérés</p>
+              <h3 className="text-3xl font-bold text-white">{kpis.totalUsers}</h3>
             </div>
-          </Card>
-
-          {/* Profils Actifs */}
-          <Card className="p-6 bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
-                <UserCog className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Profils Standards</p>
-              <h3 className="text-2xl font-bold text-gray-900 mt-1">Actifs</h3>
-              <p className="text-xs text-gray-500 mt-1">
-                Assignation automatique par rôle activée
-              </p>
-            </div>
-          </Card>
-
-          {/* Audit */}
-          <Card className="p-6 bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">État du Système</p>
-              <h3 className="text-2xl font-bold text-gray-900 mt-1">Sécurisé</h3>
-              <p className="text-xs text-gray-500 mt-1">
-                Dernière vérification à l'instant
-              </p>
-            </div>
-          </Card>
-        </div>
-      </AnimatedSection>
-
-      {/* Onglets */}
-      <AnimatedSection delay={0.2}>
-        <Card className="p-6 border-gray-200 shadow-sm">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-8 bg-gray-100/50 p-1">
-              <TabsTrigger value="profiles" className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                <UserCog className="h-4 w-4" />
-                Profils & Modèles
-              </TabsTrigger>
-              <TabsTrigger value="matrix" className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                <Grid3x3 className="h-4 w-4" />
-                Matrice de Sécurité
-              </TabsTrigger>
-              <TabsTrigger value="history" className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                <History className="h-4 w-4" />
-                Journal d'Audit
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Onglet 1: Profils (Ex-Onglet 3) */}
-            <TabsContent value="profiles" className="mt-0 focus-visible:outline-none">
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Modèles d'Accès</h3>
-                <p className="text-sm text-gray-500">
-                  Configurez ici les permissions par défaut. Chaque nouvel utilisateur recevra automatiquement les modules de son profil.
-                </p>
-              </div>
-              <ProfilesPermissionsView onRefresh={refetch} />
-            </TabsContent>
-
-            {/* Onglet 2: Vue Matricielle (Ex-Onglet 2) */}
-            <TabsContent value="matrix" className="mt-0 focus-visible:outline-none">
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Audit Global des Permissions</h3>
-                <p className="text-sm text-gray-500">
-                  Vue d'ensemble de qui a accès à quoi. Utilisez cette vue pour détecter les anomalies.
-                </p>
-              </div>
-              <MatrixPermissionsView onRefresh={refetch} />
-            </TabsContent>
-
-            {/* Onglet 3: Historique (Ex-Onglet 4) */}
-            <TabsContent value="history" className="mt-0 focus-visible:outline-none">
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Journal des Modifications</h3>
-                <p className="text-sm text-gray-500">
-                  Historique complet des changements de permissions pour l'audit de sécurité.
-                </p>
-              </div>
-              <HistoryPermissionsView onRefresh={refetch} />
-            </TabsContent>
-          </Tabs>
+          </div>
         </Card>
-      </AnimatedSection>
+
+        {/* Carte Rôle Populaire - Violet (Nouveau) */}
+        <Card 
+          className="relative overflow-hidden border-0 shadow-md bg-gradient-to-br from-purple-500 to-purple-600 p-6 hover:shadow-xl transition-all group cursor-pointer transform hover:scale-[1.02]"
+        >
+          <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 transition-transform duration-500 group-hover:scale-150" />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                <TrendingUp className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-xs font-medium bg-white/20 text-white px-2 py-1 rounded-full backdrop-blur-sm border border-white/10">
+                Top Profil
+              </span>
+            </div>
+            <div>
+              <p className="text-white/80 text-sm font-medium uppercase tracking-wider mb-1">Le plus utilisé</p>
+              {kpis.mostPopularRole ? (
+                <div>
+                  <h3 className="text-xl font-bold text-white truncate">{kpis.mostPopularRole.name}</h3>
+                  <p className="text-white/70 text-sm">{kpis.mostPopularRole.count} utilisateurs</p>
+                </div>
+              ) : (
+                <h3 className="text-xl font-bold text-white">Aucun</h3>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* Carte Configurés - Émeraude */}
+        <Card 
+          className="relative overflow-hidden border-0 shadow-md bg-gradient-to-br from-emerald-500 to-emerald-600 p-6 hover:shadow-xl transition-all group cursor-pointer transform hover:scale-[1.02]"
+        >
+          <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 transition-transform duration-500 group-hover:scale-150" />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                <ShieldCheck className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-xs font-medium bg-white/20 text-white px-2 py-1 rounded-full backdrop-blur-sm border border-white/10">
+                Opérationnels
+              </span>
+            </div>
+            <div>
+              <p className="text-white/80 text-sm font-medium uppercase tracking-wider mb-1">Rôles Configurés</p>
+              <div className="flex items-baseline gap-2">
+                <h3 className="text-3xl font-bold text-white">{kpis.configuredRoles}</h3>
+                <span className="text-sm text-white/70 font-medium">sur {kpis.totalRoles} rôles</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Vue Principale - Gestion des Profils */}
+      <ProfilesPermissionsView onRefresh={handleRefresh} />
     </div>
   );
 }

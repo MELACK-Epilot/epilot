@@ -5,17 +5,13 @@
  */
 
 import { useState } from 'react';
-import { Download, Receipt, CheckCircle2, Clock, XCircle, RefreshCw, Eye, Calendar, DollarSign, CreditCard, TrendingUp, Home, ChevronRight, Search, FileText, Printer, Mail } from 'lucide-react';
-import { exportPaymentsCSV, exportPaymentsExcel, exportPaymentsPDF, printInvoice, generateReceipt } from '@/utils/paymentExport';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Download, Receipt, CheckCircle2, Clock, XCircle, RefreshCw, DollarSign, CreditCard, TrendingUp, FileText, Mail, Trash2 } from 'lucide-react';
+import { exportPaymentsCSV, exportPaymentsExcel, exportPaymentsPDF } from '@/utils/paymentExport';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { FinanceBreadcrumb, FinancePageHeader, FinanceModernStatsGrid, FinanceSearchBar, ModernStatCardData } from '../components/finance';
-import { FINANCE_GRADIENTS } from '../constants/finance.constants';
+import { FinanceBreadcrumb, FinancePageHeader, FinanceModernStatsGrid, ModernStatCardData } from '../components/finance';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { usePayments, usePaymentStats } from '../hooks/usePayments';
+import { usePayments, usePaymentStats, usePaymentsRealtime } from '../hooks/usePayments';
+import { usePaymentActions } from '../hooks/usePaymentActions';
 import { format, subMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -23,10 +19,10 @@ import { PaymentAlerts } from '../components/payments/PaymentAlerts';
 import { PaymentFilters } from '../components/payments/PaymentFilters';
 import { BulkActionsBar } from '../components/payments/BulkActionsBar';
 import { ModernPaymentModal } from '../components/payments/ModernPaymentModal';
+import { PaymentListModal } from '../components/payments/PaymentListModal';
 import { ConfirmModal, ExportModal, SuccessModal } from '../components/payments/BulkActionModals';
 import { ModernDataTable } from '../components/shared/ModernDataTable';
 import { ChartCard } from '../components/shared/ChartCard';
-import { usePaymentActions } from '../hooks/usePaymentActions';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 
@@ -46,6 +42,12 @@ export const Payments = () => {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
+  
+  // États pour les modales d'alertes
+  const [alertModalType, setAlertModalType] = useState<'overdue' | 'pending' | 'failed' | null>(null);
+
+  // ✅ ACTIVER LE TEMPS RÉEL - Écoute automatique des changements sur payments
+  usePaymentsRealtime();
 
   const { data: payments, isLoading, refetch } = usePayments({
     query: searchQuery,
@@ -56,7 +58,16 @@ export const Payments = () => {
   });
 
   const { data: stats } = usePaymentStats();
-  const { validatePayment, validateMultiplePayments, refundPayment, generateReceipt, sendPaymentEmail } = usePaymentActions();
+  const { 
+    validatePayment, 
+    validateMultiplePayments, 
+    refundPayment, 
+    generateReceipt, 
+    sendPaymentEmail,
+    deletePayment,
+    printInvoice,
+    isLoading: isActionLoading
+  } = usePaymentActions();
 
   // Fonction pour obtenir le badge de statut
   const getStatusBadge = (status: string) => {
@@ -100,7 +111,7 @@ export const Payments = () => {
 
   const chartData = (monthlyStats || []).map((stat: any) => ({
     month: stat.month_label,
-    montant: stat.completed_amount || 0,
+    montant: parseFloat(stat.completed_amount || 0),
     nombre: stat.completed_count || 0,
   }));
 
@@ -123,13 +134,30 @@ export const Payments = () => {
     },
   ];
 
+  // Fonction de formatage dynamique des montants
+  const formatAmount = (amount: number) => {
+    if (amount >= 1000000000) return `${(amount / 1000000000).toFixed(1)}Mds`;
+    if (amount >= 1000000) return `${(amount / 1000000).toFixed(1)}M`;
+    if (amount >= 1000) return `${(amount / 1000).toFixed(0)}K`;
+    return amount.toString();
+  };
+
+  // Calcul des KPIs avancés
+  const successRate = stats?.total && stats.total > 0 
+    ? Math.round((stats.completed / stats.total) * 100) 
+    : 0;
+    
+  const averageTicket = stats?.completed && stats.completed > 0
+    ? Math.round(stats.completedAmount / stats.completed)
+    : 0;
+
   // Préparer les stats avec le nouveau design moderne
   const statsData: ModernStatCardData[] = [
-    { title: "Total", value: stats?.total || 0, subtitle: "paiements", icon: Receipt, color: 'blue' },
-    { title: "Complétés", value: stats?.completed || 0, subtitle: "payés", icon: CheckCircle2, color: 'green', trend: stats?.completed && stats?.total ? { value: Math.round((stats.completed / stats.total) * 100), label: 'du total' } : undefined },
-    { title: "En Attente", value: stats?.pending || 0, subtitle: "à traiter", icon: Clock, color: 'gold' },
-    { title: "Échoués", value: stats?.failed || 0, subtitle: "erreurs", icon: XCircle, color: 'red' },
-    { title: "Revenus", value: `${((stats?.totalAmount || 0) / 1000).toFixed(0)}K`, subtitle: "FCFA", icon: DollarSign, color: 'purple' },
+    { title: "Volume Total", value: stats?.total || 0, subtitle: "transactions", icon: Receipt, color: 'blue' },
+    { title: "Paiements Validés", value: stats?.completed || 0, subtitle: "succès", icon: CheckCircle2, color: 'green' },
+    { title: "Taux de Succès", value: `${successRate}%`, subtitle: "de conversion", icon: TrendingUp, color: 'gray' },
+    { title: "Ticket Moyen", value: formatAmount(averageTicket), subtitle: "par transaction", icon: CreditCard, color: 'gold' },
+    { title: "Revenus", value: formatAmount(stats?.completedAmount || 0), subtitle: "FCFA encaissés", icon: DollarSign, color: 'purple' },
   ];
 
   // Colonnes pour la table (depuis payments_enriched)
@@ -232,6 +260,31 @@ export const Payments = () => {
     }
   };
 
+  // État pour la modal de suppression groupée
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const handleBulkDelete = () => {
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      for (const payment of selectedPayments) {
+        await deletePayment(payment.id);
+      }
+      setSuccessMessage({
+        title: 'Suppression réussie',
+        message: `${selectedPayments.length} paiement(s) supprimé(s) avec succès !`,
+      });
+      setShowDeleteModal(false);
+      setShowSuccessModal(true);
+      setSelectedPayments([]);
+      refetch();
+    } catch (error) {
+      console.error('Erreur suppression bulk:', error);
+    }
+  };
+
   const handleExportCSV = () => {
     exportPaymentsCSV(payments || []);
   };
@@ -242,14 +295,6 @@ export const Payments = () => {
 
   const handleExportPDF = () => {
     exportPaymentsPDF(payments || []);
-  };
-
-  const handlePrintInvoice = (payment: any) => {
-    printInvoice(payment);
-  };
-
-  const handleGenerateReceipt = (payment: any) => {
-    generateReceipt(payment);
   };
 
   return (
@@ -300,7 +345,7 @@ export const Payments = () => {
       {/* Alertes */}
       <PaymentAlerts 
         alerts={alerts}
-        onViewDetails={(type) => setStatusFilter(type)}
+        onViewDetails={(type) => setAlertModalType(type as 'overdue' | 'pending' | 'failed')}
       />
 
       {/* Statistiques - Design Moderne avec Glassmorphism */}
@@ -310,7 +355,7 @@ export const Payments = () => {
       <ChartCard
         title="Évolution des Paiements"
         subtitle="6 derniers mois"
-        onExport={() => exportPayments(payments || [], 'excel')}
+        onExport={() => exportPaymentsExcel(payments || [])}
         onRefresh={refetch}
       >
         <ResponsiveContainer width="100%" height={300}>
@@ -358,7 +403,7 @@ export const Payments = () => {
         searchable
         searchPlaceholder="Rechercher un paiement..."
         exportable
-        onExport={() => exportPayments(payments || [], 'csv')}
+        onExport={() => exportPaymentsCSV(payments || [])}
         emptyMessage="Aucun paiement trouvé"
       />
 
@@ -369,6 +414,7 @@ export const Payments = () => {
         onRefund={handleBulkRefund}
         onExport={handleBulkExport}
         onSendEmail={handleBulkEmail}
+        onDelete={handleBulkDelete}
         onClear={() => setSelectedPayments([])}
       />
 
@@ -377,11 +423,40 @@ export const Payments = () => {
         payment={selectedPayment}
         isOpen={!!selectedPayment}
         onClose={() => setSelectedPayment(null)}
-        onPrintInvoice={() => handlePrintInvoice(selectedPayment)}
-        onGenerateReceipt={() => handleGenerateReceipt(selectedPayment)}
-        onValidate={() => validateMultiplePayments(selectedPayments.map(p => p.id))}
-        onRefund={() => refundPayment({ paymentId: selectedPayment.id })}
-        onSendEmail={() => sendPaymentEmail({ paymentId: selectedPayment.id, type: 'reminder' })}
+        onPrintInvoice={() => {
+          if (selectedPayment) printInvoice(selectedPayment);
+        }}
+        onGenerateReceipt={() => {
+          if (selectedPayment) generateReceipt(selectedPayment);
+        }}
+        onValidate={async () => {
+          if (selectedPayment) {
+            await validatePayment(selectedPayment.id);
+            setSelectedPayment(null);
+            refetch();
+          }
+        }}
+        onRefund={async () => {
+          if (selectedPayment) {
+            await refundPayment({ paymentId: selectedPayment.id });
+            setSelectedPayment(null);
+            refetch();
+          }
+        }}
+        onSendEmail={async () => {
+          if (selectedPayment) {
+            const emailType = selectedPayment.detailed_status === 'overdue' ? 'overdue' : 'reminder';
+            await sendPaymentEmail({ paymentId: selectedPayment.id, type: emailType });
+          }
+        }}
+        onDelete={async () => {
+          if (selectedPayment) {
+            await deletePayment(selectedPayment.id);
+            setSelectedPayment(null);
+            refetch();
+          }
+        }}
+        isLoading={isActionLoading}
       />
 
       {/* Modals d'actions bulk */}
@@ -425,11 +500,36 @@ export const Payments = () => {
         icon={Mail}
       />
 
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        title="Supprimer les paiements"
+        message={`Êtes-vous sûr de vouloir supprimer ${selectedPayments.length} paiement(s) ? Cette action est irréversible.`}
+        confirmText="Supprimer"
+        type="danger"
+        icon={Trash2}
+      />
+
       <SuccessModal
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
         title={successMessage.title}
         message={successMessage.message}
+      />
+
+      {/* Modale Liste Paiements par Type */}
+      <PaymentListModal
+        isOpen={!!alertModalType}
+        onClose={() => setAlertModalType(null)}
+        type={alertModalType}
+        payments={(payments || []).filter(p => {
+          if (alertModalType === 'overdue') return p.detailed_status === 'overdue';
+          if (alertModalType === 'pending') return p.status === 'pending' && p.detailed_status !== 'overdue';
+          if (alertModalType === 'failed') return p.status === 'failed';
+          return false;
+        })}
+        onRefresh={refetch}
       />
     </div>
   );

@@ -40,7 +40,8 @@ export const useCurrentUserGroup = () => {
     queryKey: ['current-user-group', user?.id],
     queryFn: async () => {
       if (!user?.id) {
-        throw new Error('User not authenticated');
+        console.log('⚠️ [useCurrentUserGroup] Utilisateur non authentifié');
+        return null;
       }
 
       // Récupérer l'utilisateur avec son groupe scolaire
@@ -50,10 +51,14 @@ export const useCurrentUserGroup = () => {
         .eq('id', user.id)
         .single();
 
-      if (userError) throw userError;
+      if (userError) {
+        console.error('❌ [useCurrentUserGroup] Erreur récupération utilisateur:', userError);
+        return null;
+      }
       
       // Si l'utilisateur n'a pas de groupe (Super Admin), retourner null
       if (!(userData as any)?.school_group_id) {
+        console.log('ℹ️ [useCurrentUserGroup] Utilisateur sans groupe (Super Admin)');
         return null;
       }
 
@@ -77,18 +82,23 @@ export const useCurrentUserGroup = () => {
         .eq('id', (userData as any).school_group_id)
         .single();
 
-      if (groupError) throw groupError;
-      if (!groupData) throw new Error('School group not found');
+      if (groupError) {
+        console.error('❌ [useCurrentUserGroup] Erreur récupération groupe:', groupError);
+        return null;
+      }
+      if (!groupData) {
+        console.warn('⚠️ [useCurrentUserGroup] Groupe non trouvé');
+        return null;
+      }
 
       const data = groupData as any;
       
       // Debug log
-      console.log('🔍 useCurrentUserGroup - Données récupérées:', {
+      console.log('✅ [useCurrentUserGroup] Groupe récupéré:', {
+        id: data.id,
         name: data.name,
+        plan: data.plan,
         schoolCount: data.school_count,
-        studentCount: data.student_count,
-        staffCount: data.staff_count,
-        modulesCount: data.modules_count,
       });
       
       return {

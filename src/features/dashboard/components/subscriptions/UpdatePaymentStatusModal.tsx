@@ -8,6 +8,8 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useUpdateSubscription } from '../../hooks/useSubscriptions';
@@ -27,6 +29,8 @@ export const UpdatePaymentStatusModal = ({
   const { toast } = useToast();
   const { mutate: updateSubscription, isPending } = useUpdateSubscription();
   const [paymentStatus, setPaymentStatus] = useState<string>(subscription?.paymentStatus || 'paid');
+  const [transactionId, setTransactionId] = useState<string>('');
+  const [notes, setNotes] = useState<string>('');
 
   const handleSubmit = () => {
     if (!subscription) return;
@@ -34,7 +38,11 @@ export const UpdatePaymentStatusModal = ({
     updateSubscription(
       {
         id: subscription.id,
-        paymentStatus,
+        paymentStatus: paymentStatus as any,
+        transactionId,
+        notes,
+        // Si on passe à payé, on pourrait aussi mettre à jour la méthode de paiement si elle a changé
+        // mais pour l'instant on garde celle existante ou on pourrait ajouter un champ select
       },
       {
         onSuccess: () => {
@@ -69,7 +77,7 @@ export const UpdatePaymentStatusModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
             <CreditCard className="w-5 h-5 text-[#2A9D8F]" />
@@ -111,11 +119,42 @@ export const UpdatePaymentStatusModal = ({
             </Select>
           </div>
 
-          {/* Informations abonnement */}
+          {/* Champs conditionnels pour statut Payé */}
+          {paymentStatus === 'paid' && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+              <div className="space-y-2">
+                <Label htmlFor="transaction-id">Référence Transaction <span className="text-gray-400 font-normal">(Optionnel)</span></Label>
+                <Input 
+                  id="transaction-id" 
+                  placeholder="Ex: MM-123456789 ou REF-VIR-001" 
+                  value={transactionId} 
+                  onChange={(e) => setTransactionId(e.target.value)} 
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="notes">Note Interne <span className="text-gray-400 font-normal">(Optionnel)</span></Label>
+            <Textarea 
+              id="notes" 
+              placeholder="Détails sur le paiement, raison du changement..." 
+              value={notes} 
+              onChange={(e) => setNotes(e.target.value)} 
+              className="h-20"
+            />
+          </div>
+
+          {/* Informations abonnement - Toujours afficher le prix actuel du plan */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
             <p className="text-blue-800">
-              <strong>Plan :</strong> {subscription.planName} • <strong>Montant :</strong> {subscription.amount.toLocaleString()} FCFA
+              <strong>Plan :</strong> {subscription.planName} • <strong>Montant :</strong> {(subscription.planPrice || 0).toLocaleString()} FCFA
             </p>
+            {subscription.billingPeriod && (
+              <p className="text-blue-600 text-xs mt-1">
+                Période : {subscription.billingPeriod === 'monthly' ? 'Mensuel' : subscription.billingPeriod === 'yearly' ? 'Annuel' : subscription.billingPeriod}
+              </p>
+            )}
           </div>
         </div>
 
@@ -131,7 +170,7 @@ export const UpdatePaymentStatusModal = ({
           <Button
             type="button"
             onClick={handleSubmit}
-            disabled={isPending || paymentStatus === subscription.paymentStatus}
+            disabled={isPending}
             className="bg-[#2A9D8F] hover:bg-[#238276]"
           >
             {isPending ? (

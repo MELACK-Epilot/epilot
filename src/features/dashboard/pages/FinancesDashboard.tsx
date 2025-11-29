@@ -179,6 +179,22 @@ export const FinancesDashboard = () => {
       {/* KPIs Avancés */}
       <FinancialMetricsGrid kpis={kpis} isLoading={kpisLoading} />
 
+      {/* Note explicative sur les revenus */}
+      <Card className="p-4 bg-blue-50/50 border-blue-200">
+        <div className="flex items-start gap-3">
+          <DollarSign className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-gray-700 space-y-1">
+            <p className="font-medium text-gray-900">💡 Comprendre les revenus :</p>
+            <ul className="list-disc list-inside space-y-1 text-xs">
+              <li><strong>Revenus (KPI en haut)</strong> : Paiements réellement reçus ce mois</li>
+              <li><strong>Total 12 Mois (graphique gauche)</strong> : Somme des paiements reçus sur les 12 derniers mois</li>
+              <li><strong>MRR Total (graphique droite)</strong> : Revenu Mensuel Récurrent théorique basé sur les abonnements actifs</li>
+              <li><strong>Différence</strong> : Le MRR représente le potentiel, les paiements reçus représentent la réalité</li>
+            </ul>
+          </div>
+        </div>
+      </Card>
+
       {/* Graphiques */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <RevenueChart data={revenueData} isLoading={revenueLoading} />

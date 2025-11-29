@@ -128,22 +128,25 @@ export const RevenueChart = ({ data, isLoading }: RevenueChartProps) => {
       {/* Statistiques supplémentaires */}
       <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t">
         <div className="text-center">
-          <p className="text-xs text-gray-500 mb-1">Revenu Total</p>
+          <p className="text-xs text-gray-500 mb-1">Total 12 Mois</p>
           <p className="text-lg font-semibold text-gray-900">
             {formatRevenue(totalRevenue)} FCFA
           </p>
+          <p className="text-xs text-gray-400">Paiements reçus</p>
         </div>
         <div className="text-center">
           <p className="text-xs text-gray-500 mb-1">Moyenne Mensuelle</p>
           <p className="text-lg font-semibold text-gray-900">
             {formatRevenue(avgRevenue)} FCFA
           </p>
+          <p className="text-xs text-gray-400">Sur 12 mois</p>
         </div>
         <div className="text-center">
-          <p className="text-xs text-gray-500 mb-1">Dernier Mois</p>
+          <p className="text-xs text-gray-500 mb-1">Mois en Cours</p>
           <p className="text-lg font-semibold text-gray-900">
             {formatRevenue(lastMonthRevenue)} FCFA
           </p>
+          <p className="text-xs text-gray-400">Paiements reçus</p>
         </div>
       </div>
     </Card>

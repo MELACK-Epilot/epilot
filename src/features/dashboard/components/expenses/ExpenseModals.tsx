@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { X, Plus, Download, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
+import { X, Plus, Download, CheckCircle2, AlertCircle, FileText, Clock, CheckCircle, Calendar, Building2, Pencil, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -602,12 +602,57 @@ interface ExpenseDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   expense: any;
+  onEdit?: (expense: any) => void;
+  onApprove?: (expense: any) => void;
+  onDelete?: (expense: any) => void;
 }
 
-export const ExpenseDetailsModal = ({ isOpen, onClose, expense }: ExpenseDetailsModalProps) => {
+export const ExpenseDetailsModal = ({ 
+  isOpen, 
+  onClose, 
+  expense,
+  onEdit,
+  onApprove,
+  onDelete 
+}: ExpenseDetailsModalProps) => {
   if (!expense) return null;
 
   const cat = CATEGORIES[expense.category as keyof typeof CATEGORIES];
+  
+  // Configuration des statuts
+  const statusConfig: Record<string, { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
+    pending: { 
+      label: 'En attente', 
+      color: 'text-amber-700', 
+      bgColor: 'bg-amber-50 border-amber-200',
+      icon: <Clock className="w-4 h-4" />
+    },
+    paid: { 
+      label: 'Payé', 
+      color: 'text-emerald-700', 
+      bgColor: 'bg-emerald-50 border-emerald-200',
+      icon: <CheckCircle className="w-4 h-4" />
+    },
+    cancelled: { 
+      label: 'Annulé', 
+      color: 'text-red-700', 
+      bgColor: 'bg-red-50 border-red-200',
+      icon: <X className="w-4 h-4" />
+    },
+  };
+
+  const status = statusConfig[expense.status] || statusConfig.pending;
+
+  // Configuration des méthodes de paiement
+  const paymentMethods: Record<string, { label: string; icon: string }> = {
+    cash: { label: 'Espèces', icon: '💵' },
+    bank_transfer: { label: 'Virement bancaire', icon: '🏦' },
+    mobile_money: { label: 'Mobile Money', icon: '📱' },
+    check: { label: 'Chèque', icon: '📝' },
+    card: { label: 'Carte bancaire', icon: '💳' },
+  };
+
+  const paymentMethod = paymentMethods[expense.payment_method] || { label: expense.payment_method || 'Non spécifié', icon: '💰' };
 
   return (
     <AnimatePresence>
@@ -618,7 +663,7 @@ export const ExpenseDetailsModal = ({ isOpen, onClose, expense }: ExpenseDetails
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
             onClick={onClose}
           />
 
@@ -629,78 +674,160 @@ export const ExpenseDetailsModal = ({ isOpen, onClose, expense }: ExpenseDetails
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', duration: 0.3 }}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header */}
-              <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 p-6 text-white">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-white/20 rounded-xl">
-                      <FileText className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold">Détails de la Dépense</h3>
-                      <p className="text-white/80 text-sm mt-1">{expense.reference}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={onClose}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              {/* Header compact */}
+              <div className="relative bg-gradient-to-r from-slate-800 to-slate-900 p-5">
+                <button
+                  onClick={onClose}
+                  className="absolute top-4 right-4 p-1.5 hover:bg-white/10 rounded-lg transition-colors text-white/70 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                
+                <div className="flex items-center gap-4">
+                  {/* Icône catégorie */}
+                  <div 
+                    className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl"
+                    style={{ backgroundColor: cat?.color + '30' || '#6B728020' }}
                   >
-                    <X className="w-5 h-5" />
-                  </button>
+                    {cat?.icon || '📋'}
+                  </div>
+                  
+                  <div className="flex-1">
+                    <p className="text-white/60 text-xs font-medium uppercase tracking-wider">
+                      {expense.reference || 'Dépense'}
+                    </p>
+                    <h3 className="text-white text-lg font-semibold mt-0.5 line-clamp-1">
+                      {expense.description || 'Sans description'}
+                    </h3>
+                  </div>
                 </div>
               </div>
 
-              {/* Content */}
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-2 gap-6">
+              {/* Montant principal */}
+              <div className="px-5 py-4 bg-gradient-to-r from-slate-50 to-white border-b">
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">Montant</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {(expense.amount || 0).toLocaleString()} FCFA
+                    <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">Montant</p>
+                    <p className="text-3xl font-bold text-slate-900 mt-1">
+                      {(expense.amount || 0).toLocaleString('fr-FR')}
+                      <span className="text-lg font-medium text-slate-500 ml-1">FCFA</span>
                     </p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Catégorie</p>
-                    {cat && (
-                      <Badge style={{ backgroundColor: cat.color + '20', color: cat.color }} className="border-0 text-base">
-                        <span className="mr-1">{cat.icon}</span>
-                        {cat.label}
-                      </Badge>
-                    )}
+                  
+                  {/* Badge statut */}
+                  <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${status.bgColor} ${status.color}`}>
+                    {status.icon}
+                    <span className="font-medium text-sm">{status.label}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Détails en grille */}
+              <div className="p-5 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Catégorie */}
+                  <div className="bg-slate-50 rounded-xl p-3">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider font-medium mb-2">Catégorie</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{cat?.icon || '📋'}</span>
+                      <span className="font-medium text-slate-800">{cat?.label || expense.category}</span>
+                    </div>
+                  </div>
+
+                  {/* Date */}
+                  <div className="bg-slate-50 rounded-xl p-3">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider font-medium mb-2">Date</p>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-slate-400" />
+                      <span className="font-medium text-slate-800">
+                        {format(new Date(expense.date), 'dd MMM yyyy', { locale: fr })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Méthode de paiement */}
+                  <div className="bg-slate-50 rounded-xl p-3">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider font-medium mb-2">Paiement</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{paymentMethod.icon}</span>
+                      <span className="font-medium text-slate-800">{paymentMethod.label}</span>
+                    </div>
+                  </div>
+
+                  {/* Groupe scolaire */}
+                  <div className="bg-slate-50 rounded-xl p-3">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider font-medium mb-2">Groupe</p>
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-slate-400" />
+                      <span className="font-medium text-slate-800 truncate">
+                        {expense.school_group?.name || 'Non assigné'}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Description</p>
-                  <p className="text-gray-900">{expense.description}</p>
-                </div>
+                {/* Description complète */}
+                {expense.description && (
+                  <div className="bg-slate-50 rounded-xl p-3">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider font-medium mb-2">Description</p>
+                    <p className="text-slate-700 text-sm leading-relaxed">{expense.description}</p>
+                  </div>
+                )}
 
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Date</p>
-                    <p className="text-gray-900">{format(new Date(expense.date), 'dd MMMM yyyy', { locale: fr })}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Statut</p>
-                    <Badge className={expense.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}>
-                      {expense.status === 'paid' ? 'Payé' : 'En attente'}
-                    </Badge>
-                  </div>
+                {/* Métadonnées */}
+                <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-100">
+                  <span>Créé le {format(new Date(expense.created_at || expense.date), 'dd/MM/yyyy à HH:mm', { locale: fr })}</span>
+                  {expense.updated_at && expense.updated_at !== expense.created_at && (
+                    <span>Modifié le {format(new Date(expense.updated_at), 'dd/MM/yyyy', { locale: fr })}</span>
+                  )}
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="p-6 pt-0">
-                <Button
-                  onClick={onClose}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Fermer
-                </Button>
+              <div className="p-5 pt-0 flex gap-3">
+                {expense.status === 'pending' && onApprove && (
+                  <Button
+                    onClick={() => onApprove(expense)}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Approuver
+                  </Button>
+                )}
+                
+                {onEdit && (
+                  <Button
+                    onClick={() => onEdit(expense)}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Modifier
+                  </Button>
+                )}
+
+                {!onEdit && !onApprove && (
+                  <Button
+                    onClick={onClose}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Fermer
+                  </Button>
+                )}
+
+                {onDelete && (
+                  <Button
+                    onClick={() => onDelete(expense)}
+                    variant="ghost"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             </motion.div>
           </div>

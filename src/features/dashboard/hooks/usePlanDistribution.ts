@@ -36,7 +36,9 @@ export const usePlanDistribution = () => {
             subscription_plans!inner (
               id,
               name,
-              plan_type
+              slug,
+              price,
+              billing_period
             )
           `)
           .eq('status', 'active');
@@ -48,20 +50,28 @@ export const usePlanDistribution = () => {
 
         (subscriptions || []).forEach((sub: any) => {
           const plan = sub.subscription_plans;
-          const planType = plan.plan_type || 'gratuit';
+          const planSlug = plan.slug || 'gratuit';
           
-          if (!planMap.has(planType)) {
-            planMap.set(planType, {
+          // Calculer le revenu mensuel (MRR) pour cet abonnement
+          let monthlyRevenue = 0;
+          if (plan.billing_period === 'monthly') {
+            monthlyRevenue = plan.price || 0;
+          } else if (plan.billing_period === 'yearly') {
+            monthlyRevenue = (plan.price || 0) / 12;
+          }
+          
+          if (!planMap.has(planSlug)) {
+            planMap.set(planSlug, {
               name: plan.name,
-              slug: planType,
+              slug: planSlug,
               count: 0,
               revenue: 0,
             });
           }
 
-          const planData = planMap.get(planType)!;
+          const planData = planMap.get(planSlug)!;
           planData.count += 1;
-          planData.revenue += sub.amount || 0;
+          planData.revenue += monthlyRevenue;
         });
 
         // Calculer le total pour les pourcentages

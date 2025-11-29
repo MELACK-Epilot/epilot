@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useSubscriptionHistory } from '../../hooks/useSubscriptionHistory';
 import {
   History,
   ArrowUp,
@@ -38,6 +39,9 @@ export const SubscriptionHistoryModal = ({
   isOpen,
   onClose,
 }: SubscriptionHistoryModalProps) => {
+  // Récupérer l'historique réel depuis la base de données
+  const { data: realHistory, isLoading } = useSubscriptionHistory(subscription?.id);
+
   if (!subscription) return null;
 
   const getHistoryIcon = (action: string) => {
@@ -72,30 +76,21 @@ export const SubscriptionHistoryModal = ({
     return labels[action as keyof typeof labels] || `Action: ${action}`;
   };
 
-  // Combiner l'historique réel avec des événements simulés pour la démo
-  const mockHistory = [
+  // Utiliser l'historique réel de la base de données
+  const historyItems = realHistory || [];
+  
+  // Ajouter un événement de création si l'historique est vide
+  const displayHistory = historyItems.length > 0 ? historyItems : [
     {
-      id: '1',
+      id: 'initial',
       action: 'created',
-      performedBy: 'Admin System',
-      performedByName: 'Administrateur',
-      createdAt: subscription.createdAt || new Date().toISOString(),
+      performedBy: null,
       reason: 'Création initiale de l\'abonnement',
+      createdAt: subscription.createdAt || new Date().toISOString(),
+      previousValue: null,
+      newValue: null,
     },
-    {
-      id: '2',
-      action: 'payment',
-      performedBy: 'Admin System',
-      performedByName: 'Administrateur',
-      createdAt: subscription.lastPaymentDate || subscription.createdAt,
-      amount: subscription.amount,
-      reason: 'Paiement mensuel',
-    },
-    ...(history || []).map((h, index) => ({
-      id: `real-${index}`,
-      ...h,
-    })),
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  ];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -112,14 +107,19 @@ export const SubscriptionHistoryModal = ({
 
         <ScrollArea className="max-h-[60vh] pr-4">
           <div className="space-y-4">
-            {mockHistory.length === 0 ? (
+            {isLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2A9D8F] mx-auto"></div>
+                <p className="text-gray-500 mt-2">Chargement de l'historique...</p>
+              </div>
+            ) : displayHistory.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <History className="w-12 h-12 mx-auto mb-2 text-gray-300" />
                 <p>Aucun historique disponible</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {mockHistory.map((item, index) => {
+                {displayHistory.map((item: any, index: number) => {
                   const { icon: Icon, color, bg } = getHistoryIcon(item.action);
                   return (
                     <div key={item.id || index} className="flex gap-4">
@@ -128,7 +128,7 @@ export const SubscriptionHistoryModal = ({
                         <div className={`w-10 h-10 rounded-full ${bg} flex items-center justify-center`}>
                           <Icon className={`w-5 h-5 ${color}`} />
                         </div>
-                        {index < mockHistory.length - 1 && (
+                        {index < displayHistory.length - 1 && (
                           <div className="w-0.5 h-16 bg-gray-200 mt-2"></div>
                         )}
                       </div>
@@ -139,7 +139,12 @@ export const SubscriptionHistoryModal = ({
                           <div className="flex items-start justify-between mb-2">
                             <div>
                               <p className="font-medium text-gray-900">
-                                {getHistoryLabel(item.action, item.oldPlanName, item.newPlanName, item.amount)}
+                                {getHistoryLabel(
+                                  item.action, 
+                                  item.previousValue?.subscription_plans?.name,
+                                  item.newValue?.subscription_plans?.name,
+                                  item.newValue?.amount
+                                )}
                               </p>
                               {item.reason && (
                                 <p className="text-sm text-gray-600 mt-1">{item.reason}</p>
@@ -150,7 +155,7 @@ export const SubscriptionHistoryModal = ({
                                 {format(new Date(item.createdAt), 'dd MMM yyyy à HH:mm', { locale: fr })}
                               </p>
                               <p className="text-xs text-gray-500 mt-1">
-                                par {item.performedByName || item.performedBy}
+                                par {item.performedBy || 'Système'}
                               </p>
                             </div>
                           </div>

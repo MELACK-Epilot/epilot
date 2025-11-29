@@ -51,6 +51,7 @@ export const SubscriptionActionsDropdown = ({
 
   // Vérifier si le paiement est en retard
   const isPaymentOverdue = subscription.paymentStatus === 'overdue';
+  const isPaymentPending = subscription.paymentStatus === 'pending';
   
   // Vérifier si l'abonnement est actif
   const isActive = subscription.status === 'active';
@@ -73,6 +74,20 @@ export const SubscriptionActionsDropdown = ({
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+
+        {/* Valider le Paiement (Prioritaire) */}
+        {(isPaymentPending || isPaymentOverdue) && (
+          <DropdownMenuItem
+            onClick={() => {
+              onUpdatePaymentStatus?.(subscription.id);
+              setIsOpen(false);
+            }}
+            className="flex items-center gap-2 cursor-pointer bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 font-medium mb-1"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Valider le paiement</span>
+          </DropdownMenuItem>
+        )}
 
         {/* Modifier le Plan */}
         {isActive && (

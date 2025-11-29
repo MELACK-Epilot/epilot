@@ -52,7 +52,9 @@ export const useSubscriptions = (filters?: SubscriptionFilters) => {
             subscription_plans!inner (
               id,
               name,
-              slug
+              slug,
+              price,
+              billing_period
             )
           `)
           .order('created_at', { ascending: false });
@@ -101,13 +103,14 @@ export const useSubscriptions = (filters?: SubscriptionFilters) => {
           planId: sub.plan_id,
           planName: sub.subscription_plans?.name || 'N/A',
           planSlug: sub.subscription_plans?.slug || '',
+          planPrice: sub.subscription_plans?.price || 0, // Ajout du prix du plan
           status: sub.status,
           startDate: sub.start_date,
           endDate: sub.end_date,
           autoRenew: sub.auto_renew,
-          amount: sub.amount,
+          amount: sub.amount || sub.subscription_plans?.price || 0, // Utilise le prix du plan si montant 0
           currency: sub.currency,
-          billingPeriod: sub.billing_period,
+          billingPeriod: sub.subscription_plans?.billing_period || sub.billing_period, // Priorité au plan
           paymentMethod: sub.payment_method,
           paymentStatus: sub.payment_status,
           lastPaymentDate: sub.last_payment_date,
@@ -249,6 +252,9 @@ export interface UpdateSubscriptionInput {
   autoRenew?: boolean;
   amount?: number;
   paymentMethod?: string;
+  paymentStatus?: 'paid' | 'pending' | 'overdue' | 'failed';
+  transactionId?: string;
+  notes?: string;
 }
 
 /**
@@ -261,16 +267,23 @@ export const useUpdateSubscription = () => {
     mutationFn: async (input: UpdateSubscriptionInput) => {
       const { id, ...updates } = input;
 
+      // Construire l'objet de mise à jour avec uniquement les champs fournis
+      const updateData: any = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (updates.status !== undefined) updateData.status = updates.status;
+      if (updates.endDate !== undefined) updateData.end_date = updates.endDate;
+      if (updates.autoRenew !== undefined) updateData.auto_renew = updates.autoRenew;
+      if (updates.amount !== undefined) updateData.amount = updates.amount;
+      if (updates.paymentMethod !== undefined) updateData.payment_method = updates.paymentMethod;
+      if (updates.paymentStatus !== undefined) updateData.payment_status = updates.paymentStatus;
+      if (updates.transactionId !== undefined) updateData.transaction_id = updates.transactionId;
+      if (updates.notes !== undefined) updateData.notes = updates.notes;
+
       const { data, error } = await supabase
         .from('subscriptions')
-        .update({
-          status: updates.status,
-          end_date: updates.endDate,
-          auto_renew: updates.autoRenew,
-          amount: updates.amount,
-          payment_method: updates.paymentMethod,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
@@ -318,8 +331,87 @@ export const useCancelSubscription = () => {
 };
 
 /**
- * Hook pour obtenir les statistiques des abonnements
+ * Interface pour changer le plan d'un abonnement
  */
+export interface ChangeSubscriptionPlanInput {
+  subscriptionId: string;
+  newPlanId: string;
+  reason: string;
+  immediate: boolean;
+}
+
+/**
+ * Hook pour changer le plan d'un abonnement
+ */
+export const useChangeSubscriptionPlan = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: ChangeSubscriptionPlanInput) => {
+      // 1. Récupérer l'abonnement actuel pour l'historique
+      const { data: currentSub, error: subError } = await supabase
+        .from('subscriptions')
+        .select('*, subscription_plans(name, price)')
+        .eq('id', input.subscriptionId)
+        .single();
+
+      if (subError) throw subError;
+
+      // 2. Récupérer le nouveau plan
+      const { data: newPlan, error: planError } = await supabase
+        .from('subscription_plans')
+        .select('name, price')
+        .eq('id', input.newPlanId)
+        .single();
+
+      if (planError) throw planError;
+
+      // 3. Mettre à jour l'abonnement
+      const updates: any = {
+        plan_id: input.newPlanId,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Si immédiat, on met à jour le montant tout de suite (simplification)
+      // Dans un système réel, on calculerait le prorata ici
+      if (input.immediate) {
+        updates.amount = newPlan.price;
+      }
+
+      const { data, error: updateError } = await supabase
+        .from('subscriptions')
+        .update(updates)
+        .eq('id', input.subscriptionId)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      // 4. Ajouter l'historique
+      const action = newPlan.price > (currentSub.subscription_plans?.price || 0) ? 'upgraded' : 'downgraded';
+      
+      const { error: historyError } = await supabase
+        .from('subscription_history')
+        .insert({
+          subscription_id: input.subscriptionId,
+          action: action,
+          previous_value: currentSub,
+          new_value: data,
+          reason: input.reason,
+          // performed_by: user.id // À ajouter si on a le contexte utilisateur
+        });
+
+      if (historyError) console.error('Erreur historique:', historyError);
+
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: subscriptionKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: subscriptionKeys.detail(variables.subscriptionId) });
+      queryClient.invalidateQueries({ queryKey: subscriptionKeys.stats() });
+    },
+  });
+};
 export const useSubscriptionStats = () => {
   return useQuery({
     queryKey: subscriptionKeys.stats(),

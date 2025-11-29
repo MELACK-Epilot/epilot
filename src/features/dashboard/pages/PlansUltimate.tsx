@@ -20,9 +20,9 @@ import { PlansTabNavigation } from '../components/plans/PlansTabNavigation';
 import { PlanCard } from '../components/plans/PlanCard';
 import { PlanFormDialog } from '../components/plans/PlanFormDialog';
 import { PlanSubscriptionsPanel } from '../components/plans/PlanSubscriptionsPanel';
-import { PlanAnalyticsDashboard } from '../components/plans/PlanAnalyticsDashboard';
-import { PlanOptimizationEngine } from '../components/plans/PlanOptimizationEngine';
-import { ModernPlanComparison } from '../components/plans/ModernPlanComparison';
+import { PlanAnalyticsDashboardOptimized } from '../components/plans/PlanAnalyticsDashboardOptimized';
+import { PlanOptimizationEngineOptimized } from '../components/plans/PlanOptimizationEngineOptimized';
+import { ModernPlanComparisonOptimized } from '../components/plans/ModernPlanComparisonOptimized';
 
 export const PlansUltimate = () => {
   const { user } = useAuth();
@@ -191,9 +191,9 @@ export const PlansUltimate = () => {
           </div>
         )}
         
-        {activeTab === 'analytics' && <PlanAnalyticsDashboard />}
-        {activeTab === 'optimization' && <PlanOptimizationEngine />}
-        {activeTab === 'comparison' && <ModernPlanComparison plans={plans || []} />}
+        {activeTab === 'analytics' && <PlanAnalyticsDashboardOptimized />}
+        {activeTab === 'optimization' && <PlanOptimizationEngineOptimized />}
+        {activeTab === 'comparison' && <ModernPlanComparisonOptimized plans={plans || []} />}
       </div>
       
       {/* Dialog de création/édition */}

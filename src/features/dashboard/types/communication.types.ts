@@ -101,6 +101,15 @@ export interface Conversation {
   updatedAt: string;
 }
 
+export interface MessageDraft {
+  id: string;
+  subject: string;
+  content: string;
+  recipientIds: string[];
+  attachments?: MessageAttachment[];
+  updatedAt: string;
+}
+
 export interface MessagingStats {
   totalSent: number;
   totalReceived: number;

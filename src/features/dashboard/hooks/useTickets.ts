@@ -75,7 +75,7 @@ export const useTickets = (filters?: TicketFilters) => {
     queryKey: ticketsKeys.list(filters),
     queryFn: async () => {
       let query = supabase
-        .from('tickets_with_details')
+        .from('tickets_detailed')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -90,10 +90,10 @@ export const useTickets = (filters?: TicketFilters) => {
         query = query.eq('category', filters.category);
       }
       if (filters?.assignedTo) {
-        query = query.eq('assignee_id', filters.assignedTo);
+        query = query.eq('assigned_to', filters.assignedTo);
       }
       if (filters?.createdBy) {
-        query = query.eq('creator_id', filters.createdBy);
+        query = query.eq('created_by', filters.createdBy);
       }
       if (filters?.search) {
         query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
@@ -102,7 +102,33 @@ export const useTickets = (filters?: TicketFilters) => {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as Ticket[];
+      
+      // Mapper les données vers le format Ticket
+      return (data || []).map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        category: item.category,
+        priority: item.priority,
+        status: item.status,
+        createdBy: {
+          id: item.created_by,
+          name: item.created_by_name || 'Utilisateur',
+          avatar: item.created_by_avatar,
+          role: item.created_by_role || 'admin_groupe',
+          schoolGroup: item.school_group_name
+        },
+        assignedTo: item.assigned_to ? {
+          id: item.assigned_to,
+          name: item.assigned_to_name || 'Admin',
+          avatar: item.assigned_to_avatar
+        } : undefined,
+        comments: [],
+        attachments: item.metadata?.attachments || [],
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+        resolvedAt: item.resolved_at
+      })) as Ticket[];
     },
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
@@ -116,13 +142,40 @@ export const useTicket = (ticketId: string) => {
     queryKey: ticketsKeys.detail(ticketId),
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('tickets_with_details')
+        .from('tickets_detailed')
         .select('*')
         .eq('id', ticketId)
         .single();
 
       if (error) throw error;
-      return data as Ticket;
+      
+      // Mapper vers le format Ticket
+      const item = data as any;
+      return {
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        category: item.category,
+        priority: item.priority,
+        status: item.status,
+        createdBy: {
+          id: item.created_by,
+          name: item.created_by_name || 'Utilisateur',
+          avatar: item.created_by_avatar,
+          role: item.created_by_role || 'admin_groupe',
+          schoolGroup: item.school_group_name
+        },
+        assignedTo: item.assigned_to ? {
+          id: item.assigned_to,
+          name: item.assigned_to_name || 'Admin',
+          avatar: item.assigned_to_avatar
+        } : undefined,
+        comments: [],
+        attachments: item.metadata?.attachments || [],
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+        resolvedAt: item.resolved_at
+      } as Ticket;
     },
     enabled: !!ticketId,
   });
@@ -339,6 +392,50 @@ export const useDeleteTicket = () => {
   });
 };
 
+/**
+ * Hook pour supprimer plusieurs tickets (action groupée)
+ */
+export const useBulkDeleteTickets = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ticketIds: string[]) => {
+      const { error } = await supabase
+        .from('tickets')
+        .delete()
+        .in('id', ticketIds);
+
+      if (error) throw error;
+      return ticketIds.length;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ticketsKeys.all });
+    },
+  });
+};
+
+/**
+ * Hook pour changer le statut de plusieurs tickets (action groupée)
+ */
+export const useBulkUpdateTicketStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ ticketIds, status }: { ticketIds: string[]; status: string }) => {
+      const { error } = await supabase
+        .from('tickets')
+        .update({ status, updated_at: new Date().toISOString() })
+        .in('id', ticketIds);
+
+      if (error) throw error;
+      return ticketIds.length;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ticketsKeys.all });
+    },
+  });
+};
+
 // =====================================================
 // HOOKS - COMMENTAIRES
 // =====================================================
@@ -512,19 +609,30 @@ export const useTicketsStats = () => {
     queryKey: ticketsKeys.stats(),
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('tickets_global_stats')
+        .from('tickets_stats_view')
         .select('*')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Fallback si la vue n'existe pas
+        console.warn('tickets_stats_view not found, using fallback');
+        return {
+          total: 0,
+          open: 0,
+          inProgress: 0,
+          resolved: 0,
+          closed: 0,
+          avgResolutionTime: 0,
+        } as TicketsStats;
+      }
 
       return {
-        total: data.total_tickets || 0,
-        open: data.open_tickets || 0,
-        inProgress: data.in_progress_tickets || 0,
-        resolved: data.resolved_tickets || 0,
-        closed: data.closed_tickets || 0,
-        avgResolutionTime: data.avg_resolution_time_minutes || 0,
+        total: data?.total || 0,
+        open: data?.open || 0,
+        inProgress: data?.in_progress || 0,
+        resolved: data?.resolved || 0,
+        closed: data?.closed || 0,
+        avgResolutionTime: data?.avg_resolution_hours || 0,
       } as TicketsStats;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes

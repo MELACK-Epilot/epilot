@@ -14,17 +14,24 @@ export interface AccessProfile {
   name_fr: string;
   name_en?: string;
   description?: string;
-  permissions: {
-    pedagogie: DomainPermission;
-    vie_scolaire: DomainPermission;
-    administration: DomainPermission;
-    finances: DomainPermission;
-    statistiques: DomainPermission;
-    scope: 'TOUTE_LECOLE' | 'SES_CLASSES_ET_MATIERES' | 'SES_ENFANTS_UNIQUEMENT' | 'LUI_MEME_UNIQUEMENT';
-  };
+  icon?: string;
+  avatar_url?: string;
+  // Permissions: Record des modules activés (slug -> boolean)
+  // Ex: { "gestion-notes": true, "emploi-du-temps": true }
+  permissions: Record<string, boolean> | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+// Legacy: Structure de permissions par domaine (pour référence)
+export interface LegacyDomainPermissions {
+  pedagogie: DomainPermission;
+  vie_scolaire: DomainPermission;
+  administration: DomainPermission;
+  finances: DomainPermission;
+  statistiques: DomainPermission;
+  scope: 'TOUTE_LECOLE' | 'SES_CLASSES_ET_MATIERES' | 'SES_ENFANTS_UNIQUEMENT' | 'LUI_MEME_UNIQUEMENT';
 }
 
 export interface DomainPermission {
@@ -48,7 +55,7 @@ interface AccessProfilesState {
   selectProfile: (code: string) => void;
   getProfile: (code: string) => AccessProfile | undefined;
   getProfilePermissions: (code: string) => AccessProfile['permissions'] | null;
-  hasPermission: (code: string, domain: keyof AccessProfile['permissions'], permission: keyof DomainPermission) => boolean;
+  hasPermission: (code: string, moduleSlug: string) => boolean;
   clearError: () => void;
   reset: () => void;
 }
@@ -129,13 +136,12 @@ export const useAccessProfilesStore = create<AccessProfilesState>()(
           return profile?.permissions || null;
         },
         
-        // Check if profile has specific permission
-        hasPermission: (code, domain, permission) => {
+        // Check if profile has specific module permission
+        hasPermission: (code, moduleSlug) => {
           const profile = get().profiles.find(p => p.code === code);
-          if (!profile || !profile.permissions[domain]) return false;
+          if (!profile || !profile.permissions) return false;
           
-          // @ts-ignore - Dynamic access
-          return profile.permissions[domain][permission] === true;
+          return profile.permissions[moduleSlug] === true;
         },
         
         // Clear error
@@ -184,15 +190,13 @@ export const useProfilePermissions = (code: string) => {
 };
 
 /**
- * Hook pour vérifier une permission spécifique
+ * Hook pour vérifier si un profil a accès à un module
+ * @param code - Code du profil
+ * @param moduleSlug - Slug du module à vérifier
  */
-export const useHasPermission = (
-  code: string, 
-  domain: keyof AccessProfile['permissions'], 
-  permission: keyof DomainPermission
-) => {
+export const useHasPermission = (code: string, moduleSlug: string) => {
   const hasPermission = useAccessProfilesStore(state => 
-    state.hasPermission(code, domain, permission)
+    state.hasPermission(code, moduleSlug)
   );
   return hasPermission;
 };

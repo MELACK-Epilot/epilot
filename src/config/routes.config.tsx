@@ -53,8 +53,8 @@ const FinancialModule = lazy(() =>
 );
 
 const CommunicationModule = lazy(() => 
-  import('@/features/modules/communication').then(module => ({
-    default: module.CommunicationPage || (() => <div>Module Communication</div>)
+  import('@/features/dashboard/pages/CommunicationHub').then(module => ({
+    default: module.CommunicationHub || (() => <div>Module Communication</div>)
   }))
 );
 

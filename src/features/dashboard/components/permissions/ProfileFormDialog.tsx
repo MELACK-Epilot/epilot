@@ -1,181 +1,149 @@
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Loader2 } from 'lucide-react';
+/**
+ * ProfileFormDialog - Dialog pour créer/modifier un profil d'accès
+ * 
+ * Architecture modulaire:
+ * - useProfileForm: Hook principal (data fetching, state, mutation)
+ * - ProfileIdentitySection: Avatar upload
+ * - ProfileInfoSection: Nom, code, description
+ * - ProfileModulesSection: Configuration des modules
+ * 
+ * @module ProfileFormDialog
+ */
+
+import { Loader2, User as UserIcon } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
+import { useProfileForm, type ProfileToEdit } from '../../hooks/useProfileForm';
+import {
+  ProfileIdentitySection,
+  ProfileInfoSection,
+  ProfileModulesSection,
+} from './profile-form';
 
-const profileSchema = z.object({
-  name_fr: z.string().min(3, 'Le nom doit contenir au moins 3 caractères'),
-  code: z.string().min(3, 'Le code doit contenir au moins 3 caractères').regex(/^[a-z0-9_]+$/, 'Le code ne doit contenir que des lettres minuscules, chiffres et underscores'),
-  description: z.string().optional(),
-});
-
-type ProfileFormValues = z.infer<typeof profileSchema>;
+// ============================================
+// TYPES
+// ============================================
 
 interface ProfileFormDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  profileToEdit?: any; // AccessProfile
+  profileToEdit?: ProfileToEdit | null;
 }
+
+// ============================================
+// COMPONENT (Pure UI - ~100 lignes)
+// ============================================
 
 export const ProfileFormDialog = ({
   isOpen,
   onClose,
   profileToEdit,
 }: ProfileFormDialogProps) => {
-  const queryClient = useQueryClient();
-  
-  const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileSchema),
-    defaultValues: {
-      name_fr: '',
-      code: '',
-      description: '',
-    },
-  });
+  // Hook principal - toute la logique est encapsulée
+  const {
+    form,
+    currentProfile,
+    categories,
+    permissions,
+    setPermissions,
+    isCustomRole,
+    setIsCustomRole,
+    avatarPreview,
+    setEmojiIcon,
+    activeCount,
+    isDataLoading,
+    handleAvatarChange,
+    mutation,
+  } = useProfileForm({ isOpen, onClose, profileToEdit });
 
-  // Reset form when profileToEdit changes
-  useEffect(() => {
-    if (profileToEdit) {
-      form.reset({
-        name_fr: profileToEdit.name_fr,
-        code: profileToEdit.code,
-        description: profileToEdit.description || '',
-      });
-    } else {
-      form.reset({
-        name_fr: '',
-        code: '',
-        description: '',
-      });
-    }
-  }, [profileToEdit, form, isOpen]);
-
-  // Mutation pour créer/modifier
-  const mutation = useMutation({
-    mutationFn: async (values: ProfileFormValues) => {
-      if (profileToEdit) {
-        // Update
-        const { error } = await supabase
-          .from('access_profiles')
-          .update({
-            name_fr: values.name_fr,
-            description: values.description,
-            // code ne devrait pas être modifiable idéalement, mais bon
-          })
-          .eq('id', profileToEdit.id);
-        if (error) throw error;
-      } else {
-        // Create
-        const { error } = await supabase
-          .from('access_profiles')
-          .insert({
-            name_fr: values.name_fr,
-            name_en: values.name_fr, // Fallback en anglais
-            code: values.code,
-            description: values.description,
-            permissions: {}, // Permissions vides par défaut
-            is_active: true,
-          });
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['access-profiles'] });
-      toast.success(
-        profileToEdit 
-          ? 'Profil mis à jour avec succès' 
-          : 'Profil créé avec succès'
-      );
-      onClose();
-    },
-    onError: (error: any) => {
-      toast.error('Erreur', {
-        description: error.message
-      });
-    },
-  });
-
-  const onSubmit = (values: ProfileFormValues) => {
-    mutation.mutate(values);
-  };
+  // Handler de soumission
+  const onSubmit = form.handleSubmit((values) => mutation.mutate(values));
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>
-            {profileToEdit ? 'Modifier le profil' : 'Créer un nouveau profil'}
+      <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+        {/* Header */}
+        <DialogHeader className="p-6 pb-4 border-b border-gray-100 bg-gray-50/50 shrink-0">
+          <DialogTitle className="flex items-center gap-2 text-2xl font-bold text-[#1D3557]">
+            <UserIcon className={`w-6 h-6 ${currentProfile ? 'text-[#2A9D8F]' : 'text-[#1D3557]'}`} />
+            {currentProfile ? 'Modifier le profil' : 'Créer un nouveau profil'}
           </DialogTitle>
+          <DialogDescription>
+            Définissez les informations générales et les accès aux modules pour ce profil.
+          </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="name_fr">Nom du profil (FR)</Label>
-            <Input
-              id="name_fr"
-              placeholder="Ex: Enseignant Principal"
-              {...form.register('name_fr')}
-            />
-            {form.formState.errors.name_fr && (
-              <p className="text-sm text-red-500">{form.formState.errors.name_fr.message}</p>
+        {/* Content - Scroll natif */}
+        <div className="flex-1 overflow-y-auto bg-white p-6">
+          <form id="profile-form" onSubmit={onSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Colonne 1: Identité Visuelle */}
+              <div className="lg:col-span-1">
+                <ProfileIdentitySection
+                  avatarPreview={avatarPreview}
+                  onAvatarChange={handleAvatarChange}
+                  profileName={form.watch('name_fr')}
+                />
+              </div>
+
+              {/* Colonnes 2-3: Formulaire */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Section Informations */}
+                <ProfileInfoSection
+                  form={form}
+                  isEditing={!!currentProfile}
+                  isCustomRole={isCustomRole}
+                  setIsCustomRole={setIsCustomRole}
+                  setEmojiIcon={setEmojiIcon}
+                />
+
+                {/* Section Modules */}
+                <ProfileModulesSection
+                  categories={categories}
+                  permissions={permissions}
+                  setPermissions={setPermissions}
+                  activeCount={activeCount}
+                  isLoading={isDataLoading}
+                />
+              </div>
+            </div>
+          </form>
+        </div>
+
+        {/* Footer */}
+        <DialogFooter className="p-6 pt-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3 shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={mutation.isPending}
+          >
+            Annuler
+          </Button>
+          <Button
+            type="submit"
+            form="profile-form"
+            disabled={mutation.isPending}
+            className="bg-gradient-to-r from-[#2A9D8F] to-[#1D3557] hover:from-[#238276] hover:to-[#152a45]"
+          >
+            {mutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {currentProfile ? 'Mise à jour...' : 'Création...'}
+              </>
+            ) : (
+              currentProfile ? 'Mettre à jour le profil' : 'Créer le profil'
             )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="code">Code technique</Label>
-            <Input
-              id="code"
-              placeholder="Ex: enseignant_principal"
-              {...form.register('code')}
-              disabled={!!profileToEdit} // Code non modifiable en édition
-              className={!!profileToEdit ? 'bg-gray-100' : ''}
-            />
-            {form.formState.errors.code && (
-              <p className="text-sm text-red-500">{form.formState.errors.code.message}</p>
-            )}
-            <p className="text-xs text-gray-500">
-              Identifiant unique utilisé par le système (minuscules, sans espaces).
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              placeholder="Description du rôle et des accès associés..."
-              {...form.register('description')}
-            />
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Annuler
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={mutation.isPending}
-              className="bg-[#2A9D8F] hover:bg-[#238276]"
-            >
-              {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {profileToEdit ? 'Enregistrer' : 'Créer le profil'}
-            </Button>
-          </DialogFooter>
-        </form>
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

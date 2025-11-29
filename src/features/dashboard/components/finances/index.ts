@@ -5,3 +5,4 @@
 export { FinancialStatsCards } from './FinancialStatsCards';
 export { FinancialCharts } from './FinancialCharts';
 export { FinancialDetails } from './FinancialDetails';
+export { PlanRevenueList } from './PlanRevenueList';

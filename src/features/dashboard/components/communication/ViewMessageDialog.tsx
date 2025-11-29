@@ -85,7 +85,25 @@ export const ViewMessageDialog = ({
                 <User className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
                   <p className="text-xs text-gray-500">De</p>
-                  <p className="text-sm font-semibold text-gray-900">{message.senderName}</p>
+                  <div className="flex flex-col gap-1 mt-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-gray-900">{message.senderName}</p>
+                      {message.senderRole && (
+                        <Badge variant="outline" className="text-xs px-2 py-0">
+                          {message.senderRole}
+                        </Badge>
+                      )}
+                    </div>
+                    {message.senderSchoolGroupName && (
+                      <div className="flex items-center gap-1 text-xs text-gray-600">
+                        <span>📍</span>
+                        <span className="font-medium">{message.senderSchoolGroupName}</span>
+                        {message.senderSchoolGroupCity && (
+                          <span className="text-gray-400">• {message.senderSchoolGroupCity}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

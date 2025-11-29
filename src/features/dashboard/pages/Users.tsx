@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { DataTable } from '../components/DataTable';
 import { GroupUserFormDialog } from '../components/users/GroupUserFormDialog';
 import { UserProfileDialog } from '../components/users/UserProfileDialog';
-import { UserDetailsDialog } from '../components/users/UserDetailsDialog';
+import { UserDetailsDialogEnhanced } from '../components/users/user-details';
 import { DeleteUserDialog } from '../components/users/DeleteUserDialog';
 import { AnimatedContainer } from '../components/AnimatedCard';
 import { UsersStats, UsersFilters, UsersCharts, UsersGridView } from '../components/users';
@@ -350,11 +350,17 @@ export const Users = () => {
         mode="edit"
       />
 
-      {/* Dialog Détails - Version Professionnelle */}
-      <UserDetailsDialog
+      {/* Dialog Détails - Version Améliorée avec Actions */}
+      <UserDetailsDialogEnhanced
         open={isDetailDialogOpen}
         onOpenChange={setIsDetailDialogOpen}
         user={selectedUser}
+        onEdit={(user) => {
+          setIsDetailDialogOpen(false);
+          setSelectedUser(user);
+          setIsEditDialogOpen(true);
+        }}
+        onRefresh={() => queryClient.invalidateQueries({ queryKey: ['users'] })}
       />
 
       {/* Dialog Confirmation Suppression */}

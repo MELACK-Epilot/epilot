@@ -35,19 +35,29 @@ export const useSubscriptionHubKPIs = () => {
         const sixtyDaysFromNow = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
         const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
-        // 1. Récupérer tous les abonnements avec leurs plans
+        // 1. Récupérer tous les abonnements avec leurs plans et groupes
         const { data: subscriptions, error } = await supabase
           .from('subscriptions')
           .select(`
             *,
             subscription_plans!inner (
               id,
+              name,
               billing_period,
               price
+            ),
+            school_groups (
+              id,
+              name
             )
           `);
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Erreur Supabase:', error);
+          throw error;
+        }
+
+        console.log('📊 Total abonnements récupérés:', subscriptions?.length || 0);
 
         // 2. Calculer les KPIs
         let mrr = 0;
@@ -66,20 +76,29 @@ export const useSubscriptionHubKPIs = () => {
         (subscriptions || []).forEach((sub: any) => {
           const endDate = new Date(sub.end_date);
           const amount = sub.amount || 0;
+          const planPrice = sub.subscription_plans?.price || 0;
 
           // Compter par statut
           switch (sub.status) {
             case 'active':
               totalActive++;
-              // Calculer MRR (seulement si payé)
-              if (sub.payment_status === 'paid') {
-                if (sub.subscription_plans?.billing_period === 'monthly') {
-                  mrr += amount;
-                } else if (sub.subscription_plans?.billing_period === 'yearly') {
-                  mrr += amount / 12;
-                }
-                totalRevenue += amount;
-              }
+              // Calculer MRR basé sur le prix du plan
+              const monthlyAmount = sub.subscription_plans?.billing_period === 'monthly' 
+                ? planPrice 
+                : sub.subscription_plans?.billing_period === 'yearly' 
+                  ? planPrice / 12 
+                  : 0;
+              
+              mrr += monthlyAmount;
+              totalRevenue += planPrice;
+              
+              console.log('💰 Abonnement actif:', {
+                groupe: sub.school_groups?.name,
+                plan: sub.subscription_plans?.name,
+                prix: planPrice,
+                periode: sub.subscription_plans?.billing_period,
+                mrrContribution: monthlyAmount
+              });
               break;
             case 'expired':
             case 'cancelled':
@@ -96,48 +115,51 @@ export const useSubscriptionHubKPIs = () => {
               break;
           }
 
-          // Compter les expirations
-          if (sub.status === 'active') {
+          // Compter les expirations (seulement pour les abonnements actifs)
+          if (sub.status === 'active' && sub.end_date) {
             const daysUntilExpiry = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
             
-            // Debug logs
-            console.log('📊 Abonnement:', {
-              groupe: sub.school_groups?.name,
-              endDate: sub.end_date,
-              daysUntilExpiry,
-              status: sub.status,
-              willExpireIn30: daysUntilExpiry <= 30,
-              willExpireIn60: daysUntilExpiry <= 60 && daysUntilExpiry > 30,
-              willExpireIn90: daysUntilExpiry <= 90 && daysUntilExpiry > 60,
-            });
-            
-            if (endDate <= thirtyDaysFromNow) {
+            if (daysUntilExpiry > 0 && daysUntilExpiry <= 30) {
               expiringIn30Days++;
-            }
-            if (endDate <= sixtyDaysFromNow && endDate > thirtyDaysFromNow) {
+              console.log('⏰ Expire dans 30j:', sub.school_groups?.name, 'dans', daysUntilExpiry, 'jours');
+            } else if (daysUntilExpiry > 30 && daysUntilExpiry <= 60) {
               expiringIn60Days++;
-            }
-            if (endDate <= ninetyDaysFromNow && endDate > sixtyDaysFromNow) {
+              console.log('⏰ Expire dans 60j:', sub.school_groups?.name, 'dans', daysUntilExpiry, 'jours');
+            } else if (daysUntilExpiry > 60 && daysUntilExpiry <= 90) {
               expiringIn90Days++;
+              console.log('⏰ Expire dans 90j:', sub.school_groups?.name, 'dans', daysUntilExpiry, 'jours');
             }
           }
 
           // Compter les paiements en retard
-          if (sub.payment_status === 'overdue') {
+          if (sub.payment_status === 'overdue' || sub.payment_status === 'pending') {
             overduePayments++;
-            overdueAmount += amount;
+            overdueAmount += planPrice;
+            console.log('⚠️ Paiement en retard:', sub.school_groups?.name, planPrice, 'FCFA');
           }
+        });
+
+        console.log('📈 Résumé KPIs:', {
+          totalAbonnements: subscriptions?.length,
+          actifs: totalActive,
+          inactifs: totalInactive,
+          mrrCalcule: mrr,
+          arrCalcule: mrr * 12,
+          expirant30j: expiringIn30Days,
+          expirant60j: expiringIn60Days,
+          expirant90j: expiringIn90Days,
+          paiementsRetard: overduePayments
         });
 
         // 3. Calculer ARR (Annual Recurring Revenue)
         const arr = mrr * 12;
 
-        // 4. Calculer le taux de renouvellement
-        // (Abonnements actifs / (Actifs + Expirés + Annulés)) * 100
-        const totalSubscriptions = totalActive + totalInactive;
+        // 4. Calculer le taux de renouvellement réel
+        // Formule correcte: (Actifs / Total) * 100
+        const totalSubscriptions = subscriptions?.length || 0;
         const renewalRate = totalSubscriptions > 0 
           ? (totalActive / totalSubscriptions) * 100 
-          : 0;
+          : 100; // 100% si aucun abonnement (éviter 0%)
 
         // 5. Calculer la valeur moyenne d'un abonnement
         const averageSubscriptionValue = totalActive > 0 

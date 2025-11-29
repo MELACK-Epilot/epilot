@@ -1,9 +1,11 @@
 /**
  * Hooks pour la gestion des dépenses
+ * Données dynamiques et temps réel
  * @module useExpenses
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
 export const expenseKeys = {
@@ -11,6 +13,33 @@ export const expenseKeys = {
   lists: () => [...expenseKeys.all, 'list'] as const,
   list: (filters: any) => [...expenseKeys.lists(), filters] as const,
   stats: () => [...expenseKeys.all, 'stats'] as const,
+  categories: () => [...expenseKeys.all, 'categories'] as const,
+  monthly: () => [...expenseKeys.all, 'monthly'] as const,
+};
+
+/**
+ * Hook pour écouter les changements en temps réel sur les dépenses
+ */
+export const useExpensesRealtime = () => {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('expenses-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'expenses' },
+        () => {
+          // Invalider toutes les queries liées aux dépenses
+          queryClient.invalidateQueries({ queryKey: expenseKeys.all });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 };
 
 /**
@@ -194,6 +223,54 @@ export const useDeleteExpense = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: expenseKeys.all });
     },
+  });
+};
+
+/**
+ * Hook pour récupérer les dépenses par catégorie (dynamique)
+ */
+export const useExpensesByCategory = () => {
+  return useQuery({
+    queryKey: expenseKeys.categories(),
+    queryFn: async () => {
+      // @ts-expect-error - Vue expenses_by_category créée par SQL
+      const { data, error } = await supabase
+        .from('expenses_by_category')
+        .select('*');
+
+      if (error) {
+        console.warn('Erreur récupération catégories:', error);
+        return [];
+      }
+
+      return data || [];
+    },
+    staleTime: 30 * 1000, // 30 secondes pour données plus fraîches
+  });
+};
+
+/**
+ * Hook pour récupérer les dépenses mensuelles (dynamique)
+ */
+export const useExpensesMonthly = () => {
+  return useQuery({
+    queryKey: expenseKeys.monthly(),
+    queryFn: async () => {
+      // @ts-expect-error - Vue expenses_monthly créée par SQL
+      const { data, error } = await supabase
+        .from('expenses_monthly')
+        .select('*')
+        .order('month', { ascending: false })
+        .limit(6);
+
+      if (error) {
+        console.warn('Erreur récupération mensuel:', error);
+        return [];
+      }
+
+      return (data || []).reverse();
+    },
+    staleTime: 30 * 1000, // 30 secondes
   });
 };
 

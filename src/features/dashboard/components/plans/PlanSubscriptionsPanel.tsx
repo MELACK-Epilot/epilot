@@ -4,9 +4,9 @@
  * @module PlanSubscriptionsPanel
  */
 
-import { Users, TrendingUp, DollarSign, AlertCircle, Package } from 'lucide-react';
+import { Users, TrendingUp, DollarSign, AlertCircle, Package, Clock, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { usePlanSubscriptions, usePlanSubscriptionStats, type PlanSubscription } from '../../hooks/usePlanSubscriptions';
+import { usePlanSubscriptionsOptimized, usePlanSubscriptionStatsOptimized, useSubscriptionAlerts, type PlanSubscription } from '../../hooks/usePlanSubscriptionsOptimized';
 import { useToggleAutoRenew } from '../../hooks/useToggleAutoRenew';
 import { useAuth } from '@/features/auth/store/auth.store';
 import { AnimatedContainer, AnimatedItem } from '../AnimatedCard';
@@ -16,6 +16,7 @@ import { useSubscriptionFilters } from './hooks/useSubscriptionFilters';
 import { useSubscriptionSelection } from './hooks/useSubscriptionSelection';
 import { SubscriptionFiltersBar } from './components/SubscriptionFiltersBar';
 import { SubscriptionCard } from './components/SubscriptionCard';
+import { ExpiryAlertBanner } from './ExpiryAlertBanner';
 import { exportToExcel, handlePrint } from './utils/export.utils';
 import { toast } from 'sonner';
 
@@ -30,18 +31,21 @@ interface PlanSubscriptionsPanelProps {
  */
 export const PlanSubscriptionsPanel = ({ planId, planName }: PlanSubscriptionsPanelProps) => {
   // ========================================
-  // DONNÉES RÉELLES DE LA BASE DE DONNÉES
+  // DONNÉES RÉELLES DE LA BASE DE DONNÉES (VERSION OPTIMISÉE)
   // ========================================
   const { 
     data: subscriptions, 
     isLoading, 
     error: subscriptionsError 
-  } = usePlanSubscriptions(planId);
+  } = usePlanSubscriptionsOptimized(planId);
   
   const { 
     data: stats, 
     error: statsError 
-  } = usePlanSubscriptionStats(planId);
+  } = usePlanSubscriptionStatsOptimized(planId);
+  
+  // Hook pour les alertes proactives
+  useSubscriptionAlerts(subscriptions);
   
   // Logger l'erreur stats en développement (non bloquant)
   if (statsError && process.env.NODE_ENV === 'development') {
@@ -144,6 +148,11 @@ export const PlanSubscriptionsPanel = ({ planId, planName }: PlanSubscriptionsPa
         </div>
       </div>
       
+      {/* Bannière d'alertes */}
+      {subscriptions && subscriptions.length > 0 && (
+        <ExpiryAlertBanner subscriptions={subscriptions} />
+      )}
+      
       {/* Barre de filtres et actions */}
       <SubscriptionFiltersBar
         searchQuery={filters.searchQuery}
@@ -163,68 +172,82 @@ export const PlanSubscriptionsPanel = ({ planId, planName }: PlanSubscriptionsPa
         onPrint={handlePrintSafe}
       />
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Design Refondu */}
       <AnimatedContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" stagger={0.05}>
+        {/* Abonnements Actifs */}
         <AnimatedItem>
-          <div className="relative overflow-hidden bg-gradient-to-br from-[#1D3557] to-[#0d1f3d] rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-3">
-                <div className="p-3 bg-white/10 backdrop-blur-sm rounded-lg">
-                  <Users className="h-6 w-6 text-white" />
-                </div>
+          <div className="relative overflow-hidden bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-all duration-300 h-32 flex flex-col justify-between group">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-1">Abonnements actifs</p>
+                <p className="text-3xl font-bold text-gray-900 group-hover:text-[#1D3557] transition-colors">{stats?.active || 0}</p>
               </div>
-              <p className="text-white/80 text-sm font-medium mb-1">Abonnements actifs</p>
-              <p className="text-3xl font-bold text-white">{stats?.active || 0}</p>
+              <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-[#1D3557] group-hover:text-white transition-all duration-300">
+                <Users className="h-5 w-5 text-[#1D3557] group-hover:text-white" />
+              </div>
+            </div>
+            <div className="w-full bg-gray-100 h-1 rounded-full mt-2 overflow-hidden">
+              <div className="bg-[#1D3557] h-full rounded-full" style={{ width: '100%' }}></div>
             </div>
           </div>
         </AnimatedItem>
 
+        {/* MRR */}
         <AnimatedItem>
-          <div className="relative overflow-hidden bg-gradient-to-br from-[#2A9D8F] to-[#1d7a6f] rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-3">
-                <div className="p-3 bg-white/10 backdrop-blur-sm rounded-lg">
-                  <DollarSign className="h-6 w-6 text-white" />
+          <div className="relative overflow-hidden bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-all duration-300 h-32 flex flex-col justify-between group">
+            <div className="flex justify-between items-start">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-gray-500 text-xs font-medium uppercase tracking-wider">Revenu mensuel</p>
+                  <span className="text-[10px] px-1.5 py-0.5 bg-green-50 text-green-700 rounded-full font-semibold border border-green-100">MRR</span>
                 </div>
-                <div className="flex items-center gap-1 text-white/90 text-xs font-semibold bg-white/10 px-2 py-1 rounded-full">
-                  <TrendingUp className="h-3 w-3" />
-                  MRR
-                </div>
+                <p className="text-3xl font-bold text-gray-900 group-hover:text-[#2A9D8F] transition-colors">
+                  {((stats?.mrr || 0) / 1000).toFixed(0)}K <span className="text-sm font-normal text-gray-400">FCFA</span>
+                </p>
               </div>
-              <p className="text-white/80 text-sm font-medium mb-1">Revenu mensuel</p>
-              <p className="text-3xl font-bold text-white">{((stats?.mrr || 0) / 1000).toFixed(0)}K FCFA</p>
+              <div className="p-2 bg-green-50 rounded-lg group-hover:bg-[#2A9D8F] group-hover:text-white transition-all duration-300">
+                <DollarSign className="h-5 w-5 text-[#2A9D8F] group-hover:text-white" />
+              </div>
+            </div>
+            <div className="w-full bg-gray-100 h-1 rounded-full mt-2 overflow-hidden">
+              <div className="bg-[#2A9D8F] h-full rounded-full" style={{ width: '75%' }}></div>
             </div>
           </div>
         </AnimatedItem>
 
+        {/* Expire Bientôt */}
         <AnimatedItem>
-          <div className="relative overflow-hidden bg-gradient-to-br from-[#E9C46A] to-[#d4a84f] rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-3">
-                <div className="p-3 bg-white/10 backdrop-blur-sm rounded-lg">
-                  <TrendingUp className="h-6 w-6 text-white" />
-                </div>
+          <div className="relative overflow-hidden bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-all duration-300 h-32 flex flex-col justify-between group">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-1">Expire bientôt</p>
+                <p className="text-3xl font-bold text-gray-900 group-hover:text-[#E9C46A] transition-colors">{stats?.expiring_soon || 0}</p>
               </div>
-              <p className="text-white/80 text-sm font-medium mb-1">En essai</p>
-              <p className="text-3xl font-bold text-white">{stats?.trial || 0}</p>
+              <div className="p-2 bg-yellow-50 rounded-lg group-hover:bg-[#E9C46A] group-hover:text-white transition-all duration-300">
+                <Clock className="h-5 w-5 text-[#E9C46A] group-hover:text-white" />
+              </div>
+            </div>
+            <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
+              <AlertTriangle className="h-3 w-3 text-[#E9C46A]" />
+              <span>Dans les 7 jours</span>
             </div>
           </div>
         </AnimatedItem>
 
+        {/* Annulés */}
         <AnimatedItem>
-          <div className="relative overflow-hidden bg-gradient-to-br from-[#E63946] to-[#c52030] rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-3">
-                <div className="p-3 bg-white/10 backdrop-blur-sm rounded-lg">
-                  <AlertCircle className="h-6 w-6 text-white" />
-                </div>
+          <div className="relative overflow-hidden bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-all duration-300 h-32 flex flex-col justify-between group">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-1">Annulés</p>
+                <p className="text-3xl font-bold text-gray-900 group-hover:text-[#E63946] transition-colors">{stats?.cancelled || 0}</p>
               </div>
-              <p className="text-white/80 text-sm font-medium mb-1">Annulés</p>
-              <p className="text-3xl font-bold text-white">{stats?.cancelled || 0}</p>
+              <div className="p-2 bg-red-50 rounded-lg group-hover:bg-[#E63946] group-hover:text-white transition-all duration-300">
+                <AlertCircle className="h-5 w-5 text-[#E63946] group-hover:text-white" />
+              </div>
+            </div>
+            <div className="w-full bg-gray-100 h-1 rounded-full mt-2 overflow-hidden">
+              <div className="bg-[#E63946] h-full rounded-full" style={{ width: stats?.cancelled ? '25%' : '0%' }}></div>
             </div>
           </div>
         </AnimatedItem>

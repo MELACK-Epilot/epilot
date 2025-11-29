@@ -298,28 +298,28 @@ export const DashboardLayout = () => {
                     <div
                       className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
                         active
-                          ? 'bg-white/15 text-white shadow-lg shadow-black/10'
+                          ? 'bg-[#2A9D8F] text-white shadow-lg shadow-[#2A9D8F]/20 font-medium'
                           : 'text-white/70 hover:bg-white/10 hover:text-white hover:translate-x-1'
                       } ${!sidebarOpen && 'justify-center'}`}
                       style={{
                         transitionDelay: `${index * 20}ms`
                       }}
                     >
-                      <Icon className="w-5 h-5 flex-shrink-0 transition-transform duration-200" />
+                      <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${active ? 'scale-110' : ''}`} />
                       {sidebarOpen && (
                         <>
-                          <span className="text-sm font-medium whitespace-nowrap flex-1 transition-opacity duration-200">
+                          <span className="text-sm whitespace-nowrap flex-1 transition-opacity duration-200">
                             {item.title}
                           </span>
                           {item.badge && (
-                            <span className="bg-[#E63946] text-white text-xs font-semibold px-2 py-0.5 rounded-full animate-pulse">
+                            <span className="bg-[#E9C46A] text-[#1D3557] text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">
                               {item.badge}
                             </span>
                           )}
                         </>
                       )}
                       {item.badge && !sidebarOpen && (
-                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#E63946] rounded-full animate-pulse" />
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#E9C46A] rounded-full border-2 border-[#1D3557]" />
                       )}
                     </div>
                   </Link>

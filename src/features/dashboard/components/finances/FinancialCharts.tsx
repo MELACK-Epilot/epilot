@@ -7,6 +7,7 @@ import { Calendar, CreditCard, TrendingUp, BarChart3 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { PlanRevenueList } from './PlanRevenueList';
 
 interface RevenueData {
   period: string;
@@ -174,6 +175,11 @@ export const FinancialCharts = ({ revenueData, planData, isLoading }: FinancialC
               <p>Aucune donnée disponible</p>
             </div>
           </div>
+        )}
+
+        {/* Liste détaillée des revenus par plan */}
+        {planData.length > 0 && (
+          <PlanRevenueList planData={planData} />
         )}
         </Card>
       </motion.div>

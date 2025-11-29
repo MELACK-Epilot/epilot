@@ -1,6 +1,6 @@
 /**
  * Hook pour récupérer les KPIs financiers avancés
- * ARPU, Churn Rate, Conversion Rate, LTV
+ * Utilise la fonction RPC get_financial_kpis sur Supabase
  * @module useFinancialKPIs
  */
 
@@ -23,95 +23,26 @@ export const useFinancialKPIs = (period: string = '30d') => {
     queryKey: ['financial-kpis', period],
     queryFn: async (): Promise<FinancialKPIs> => {
       try {
-        // Calculer les dates selon la période
-        const now = new Date();
-        let startDate = new Date();
-        
-        switch (period) {
-          case '7d':
-            startDate.setDate(now.getDate() - 7);
-            break;
-          case '30d':
-            startDate.setDate(now.getDate() - 30);
-            break;
-          case '3m':
-            startDate.setMonth(now.getMonth() - 3);
-            break;
-          case '6m':
-            startDate.setMonth(now.getMonth() - 6);
-            break;
-          case '1y':
-            startDate.setFullYear(now.getFullYear() - 1);
-            break;
-          default:
-            startDate.setDate(now.getDate() - 30);
-        }
+        // Appel de la fonction RPC sur Supabase
+        const { data, error } = await supabase.rpc('get_financial_kpis');
 
-        // 1. Compter tous les groupes
-        const { count: totalGroups } = await supabase
-          .from('school_groups')
-          .select('*', { count: 'exact', head: true });
+        if (error) throw error;
 
-        // 2. Compter abonnements actifs
-        const { count: activeSubscriptions } = await supabase
-          .from('school_group_subscriptions')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'active');
+        const kpis = data as any;
 
-        // 3. Compter abonnements expirés/annulés dans la période
-        const { count: canceledSubscriptions } = await supabase
-          .from('school_group_subscriptions')
-          .select('*', { count: 'exact', head: true })
-          .in('status', ['expired', 'cancelled'])
-          .gte('created_at', startDate.toISOString());
-
-        // 4. Calculer revenus basés sur MRR (pas fee_payments)
-        // Pour le Super Admin, les revenus = MRR × nombre de mois
-        const { data: statsData } = await supabase
-          .from('financial_stats')
-          .select('mrr')
-          .single();
-
-        const mrr = (statsData as any)?.mrr || 0;
-        const monthsInPeriod = period === '7d' ? 0.25 : period === '30d' ? 1 : period === '3m' ? 3 : period === '6m' ? 6 : 12;
-        const totalRevenue = mrr * monthsInPeriod;
-
-        // 5. Calculer les KPIs
-        const activeSubsCount = activeSubscriptions || 0;
-        const totalGroupsCount = totalGroups || 0;
-        const canceledSubsCount = canceledSubscriptions || 0;
-
-        // ARPU = Revenu total / Nombre d'abonnements actifs
-        const arpu = activeSubsCount > 0 ? totalRevenue / activeSubsCount : 0;
-
-        // Taux de conversion = (Abonnements actifs / Total groupes) * 100
-        const conversionRate = totalGroupsCount > 0 
-          ? (activeSubsCount / totalGroupsCount) * 100 
-          : 0;
-
-        // Churn Rate = (Abonnements annulés / Total abonnements) * 100
-        const totalSubscriptions = activeSubsCount + canceledSubsCount;
-        const churnRate = totalSubscriptions > 0 
-          ? (canceledSubsCount / totalSubscriptions) * 100 
-          : 0;
-
-        // LTV = ARPU / (Churn Rate / 100)
-        // Si churn rate est 0, on utilise une valeur par défaut de 5%
-        const effectiveChurnRate = churnRate > 0 ? churnRate / 100 : 0.05;
-        const ltv = arpu / effectiveChurnRate;
-
+        // Mapping des données camelCase pour le frontend
         return {
-          arpu: Math.round(arpu),
-          conversionRate: Math.round(conversionRate * 10) / 10,
-          churnRate: Math.round(churnRate * 10) / 10,
-          ltv: Math.round(ltv),
-          activeSubscriptionsCount: activeSubsCount,
-          totalGroupsCount,
-          canceledSubscriptionsCount: canceledSubsCount,
-          monthlyRevenue: totalRevenue,
+          arpu: kpis?.arpu || 0,
+          conversionRate: kpis?.conversion_rate || 0,
+          churnRate: kpis?.churn_rate || 0,
+          ltv: kpis?.ltv || 0,
+          activeSubscriptionsCount: kpis?.active_subscriptions_count || 0,
+          totalGroupsCount: kpis?.total_groups_count || 0,
+          canceledSubscriptionsCount: kpis?.canceled_subscriptions_count || 0,
+          monthlyRevenue: kpis?.monthly_revenue || 0,
         };
       } catch (error) {
-        console.error('Erreur lors du calcul des KPIs financiers:', error);
+        console.error('Erreur lors de la récupération des KPIs financiers:', error);
         return {
           arpu: 0,
           conversionRate: 0,

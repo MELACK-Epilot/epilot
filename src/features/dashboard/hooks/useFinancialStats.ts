@@ -196,7 +196,7 @@ export const usePlanRevenue = () => {
         const { data, error } = await supabase
           .from('plan_stats')
           .select('*')
-          .order('revenue', { ascending: false });
+          .order('monthly_revenue', { ascending: false });
 
         if (error) {
           console.warn('Vue plan_stats non disponible:', error.message);
@@ -207,15 +207,23 @@ export const usePlanRevenue = () => {
           return [];
         }
 
-        return data.map((item: any) => ({
-          planId: item.plan_id,
-          planName: item.plan_name,
-          planSlug: item.plan_slug,
-          subscriptionCount: item.subscription_count || 0,
-          revenue: item.revenue || 0,
-          growth: item.growth || 0,
-          percentage: item.percentage || 0,
-        }));
+        // Calculer le total pour les pourcentages
+        const totalRevenue = data.reduce((sum: number, item: any) => 
+          sum + parseFloat(item.monthly_revenue || 0), 0
+        );
+
+        return data.map((item: any) => {
+          const revenue = parseFloat(item.monthly_revenue || 0);
+          return {
+            planId: item.id,
+            planName: item.name,
+            planSlug: item.slug,
+            subscriptionCount: item.active_subscription_count || 0,
+            revenue: revenue,
+            growth: 0, // À calculer si besoin
+            percentage: totalRevenue > 0 ? (revenue / totalRevenue) * 100 : 0,
+          };
+        });
       } catch (error) {
         console.error('Erreur lors de la récupération des revenus par plan:', error);
         return [];

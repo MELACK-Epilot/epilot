@@ -1,5 +1,6 @@
 /**
  * Widget des statistiques clés (KPI)
+ * Design System Officiel & Animations Modernes
  * @module StatsWidget
  */
 
@@ -11,10 +12,19 @@ import { useAuth } from '@/features/auth/store/auth.store';
 import { useResponsive } from '@/hooks/useResponsive';
 import { AnimatedContainer, AnimatedItem } from './AnimatedCard';
 
+// Couleurs Officielles
+const COLORS = {
+  primary: '#1D3557',
+  success: '#2A9D8F',
+  warning: '#E9C46A',
+  danger: '#E63946',
+  white: '#FFFFFF'
+};
+
 export const StatsWidget = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { isMobile, isTablet } = useResponsive();
+  const { isMobile } = useResponsive();
   
   const isSuperAdmin = user?.role === 'super_admin';
   const isAdminGroupe = user?.role === 'admin_groupe';
@@ -23,109 +33,110 @@ export const StatsWidget = () => {
   const { data: superAdminStats, isLoading: superAdminLoading } = useDashboardStats();
   const { data: adminGroupStats, isLoading: adminGroupLoading } = useAdminGroupStats();
   
-  const stats = isAdminGroupe ? adminGroupStats : superAdminStats;
   const isLoading = isAdminGroupe ? adminGroupLoading : superAdminLoading;
+
+  // Stats Super Admin typées
+  const saStats = superAdminStats as any;
+  // Stats Admin Groupe typées
+  const agStats = adminGroupStats as any;
 
   // Cards adaptées selon le rôle
   const cards = isSuperAdmin ? [
     {
       title: 'Groupes Scolaires',
-      value: stats?.totalSchoolGroups || 0,
-      trend: stats?.trends.schoolGroups || 0,
+      value: saStats?.totalSchoolGroups || 0,
+      trend: saStats?.trends?.schoolGroups || 0,
       icon: Building2,
       gradient: 'from-[#1D3557] via-[#2A4A6F] to-[#0d1f3d]',
-      iconBg: 'bg-blue-500/20',
-      iconColor: 'text-blue-100',
+      iconBg: 'bg-[#1D3557]/10',
+      iconColor: 'text-[#1D3557]',
       route: '/dashboard/school-groups',
     },
     {
       title: 'Utilisateurs Actifs',
-      value: stats?.activeUsers || 0,
-      trend: stats?.trends.users || 0,
+      value: saStats?.activeUsers || 0,
+      trend: saStats?.trends?.users || 0,
       icon: Users,
       gradient: 'from-[#2A9D8F] via-[#3FBFAE] to-[#1d7a6f]',
-      iconBg: 'bg-emerald-500/20',
-      iconColor: 'text-emerald-100',
+      iconBg: 'bg-[#2A9D8F]/10',
+      iconColor: 'text-[#2A9D8F]',
       route: '/dashboard/users',
     },
     {
       title: 'MRR Estimé',
-      value: `${((stats?.estimatedMRR || 0) / 1000000).toFixed(1)}M`,
-      trend: stats?.trends.mrr || 0,
+      value: `${((saStats?.estimatedMRR || 0) / 1000000).toFixed(1)}M`,
+      trend: saStats?.trends?.mrr || 0,
       icon: DollarSign,
       gradient: 'from-[#E9C46A] via-[#F4D06F] to-[#d4a84a]',
-      iconBg: 'bg-yellow-500/20',
-      iconColor: 'text-yellow-100',
+      iconBg: 'bg-[#E9C46A]/10',
+      iconColor: 'text-[#E9C46A]',
       route: '/dashboard/subscriptions',
       suffix: 'FCFA',
     },
     {
       title: 'Abonnements Critiques',
-      value: stats?.criticalSubscriptions || 0,
-      trend: stats?.trends.subscriptions || 0,
+      value: saStats?.criticalSubscriptions || 0,
+      trend: saStats?.trends?.subscriptions || 0,
       icon: AlertTriangle,
       gradient: 'from-[#E63946] via-[#FF4757] to-[#c72f3a]',
-      iconBg: 'bg-red-500/20',
-      iconColor: 'text-red-100',
+      iconBg: 'bg-[#E63946]/10',
+      iconColor: 'text-[#E63946]',
       route: '/dashboard/subscriptions?filter=critical',
     },
   ] : [
     {
       title: 'Écoles',
-      value: (stats as any)?.totalSchools || 0,  // ✅ Noms cohérents
-      trend: (stats as any)?.trends.schools || 0,
+      value: agStats?.totalSchools || 0,
+      trend: agStats?.trends?.schools || 0,
       icon: School,
-      gradient: 'from-[#1D3557] via-[#2A4A6F] to-[#0d1f3d]',
-      iconBg: 'bg-blue-500/20',
-      iconColor: 'text-blue-100',
+      gradient: 'from-[#1D3557] to-[#2A4A6F]',
+      iconBg: 'bg-[#1D3557]/10',
+      iconColor: 'text-[#1D3557]',
       route: '/dashboard/schools',
     },
     {
       title: 'Élèves',
-      value: (stats as any)?.totalStudents || 0,  // ✅ Noms cohérents
-      trend: (stats as any)?.trends.students || 0,
+      value: agStats?.totalStudents || 0,
+      trend: agStats?.trends?.students || 0,
       icon: GraduationCap,
-      gradient: 'from-[#2A9D8F] via-[#3FBFAE] to-[#1d7a6f]',
-      iconBg: 'bg-emerald-500/20',
-      iconColor: 'text-emerald-100',
+      gradient: 'from-[#2A9D8F] to-[#3FBFAE]',
+      iconBg: 'bg-[#2A9D8F]/10',
+      iconColor: 'text-[#2A9D8F]',
       route: '/dashboard/schools',
     },
     {
       title: 'Personnel',
-      value: (stats as any)?.totalStaff || 0,  // ✅ Noms cohérents
-      trend: (stats as any)?.trends.staff || 0,
+      value: agStats?.totalStaff || 0,
+      trend: agStats?.trends?.staff || 0,
       icon: Users,
-      gradient: 'from-[#8B5CF6] via-[#A78BFA] to-[#7C3AED]',
-      iconBg: 'bg-purple-500/20',
-      iconColor: 'text-purple-100',
+      gradient: 'from-[#8B5CF6] to-[#A78BFA]',
+      iconBg: 'bg-[#8B5CF6]/10',
+      iconColor: 'text-[#8B5CF6]',
       route: '/dashboard/users',
     },
     {
       title: 'Utilisateurs Actifs',
-      value: (stats as any)?.activeUsers || 0,
-      trend: (stats as any)?.trends.users || 0,
+      value: agStats?.activeUsers || 0,
+      trend: agStats?.trends?.users || 0,
       icon: Users,
-      gradient: 'from-[#F59E0B] via-[#FBBF24] to-[#D97706]',
-      iconBg: 'bg-orange-500/20',
-      iconColor: 'text-orange-100',
+      gradient: 'from-[#E9C46A] to-[#F4D06F]',
+      iconBg: 'bg-[#E9C46A]/10',
+      iconColor: 'text-[#E9C46A]',
       route: '/dashboard/users',
     },
   ];
 
   if (isLoading) {
     return (
-      <div className={`grid gap-3 sm:gap-4 ${
-        isMobile 
-          ? 'grid-cols-1' 
-          : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
-      }`}>
+      <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'}`}>
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className={`bg-white rounded-2xl border border-gray-200 animate-pulse ${
-            isMobile ? 'p-4 min-h-[140px]' : 'p-6 min-h-[180px]'
-          }`}>
-            <div className="h-3 bg-gray-200 rounded w-20 mb-2" />
-            <div className="h-8 bg-gray-200 rounded w-16 mb-2" />
-            <div className="h-2 bg-gray-200 rounded w-16" />
+          <div key={i} className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm animate-pulse">
+            <div className="flex justify-between mb-4">
+              <div className="h-10 w-10 bg-gray-100 rounded-xl" />
+              <div className="h-6 w-16 bg-gray-100 rounded-full" />
+            </div>
+            <div className="h-3 bg-gray-100 rounded w-24 mb-3" />
+            <div className="h-8 bg-gray-100 rounded w-32" />
           </div>
         ))}
       </div>
@@ -133,11 +144,10 @@ export const StatsWidget = () => {
   }
 
   return (
-    <AnimatedContainer className={`grid gap-3 sm:gap-4 ${
-      isMobile 
-        ? 'grid-cols-1' 
-        : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
-    }`} stagger={0.05}>
+    <AnimatedContainer 
+      className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'}`} 
+      stagger={0.05}
+    >
       {cards.map((card) => {
         const Icon = card.icon;
         const isPositive = card.trend >= 0;
@@ -146,37 +156,44 @@ export const StatsWidget = () => {
           <AnimatedItem key={card.title}>
             <button
               onClick={() => navigate(card.route)}
-              className={`group relative overflow-hidden bg-gradient-to-br ${card.gradient} rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.03] text-left border border-white/10 cursor-pointer w-full h-full flex flex-col ${
-                isMobile ? 'p-4 min-h-[140px]' : 'p-6 min-h-[180px]'
-              }`}
+              className="group relative w-full text-left bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden"
             >
-              {/* Cercles décoratifs animés (sans blur excessif) */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-12 -mb-12 group-hover:scale-150 transition-transform duration-700" />
+              {/* Background Hover Effect */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-[0.03] transition-opacity duration-300`} />
               
-              {/* Contenu */}
-              <div className="relative z-10 flex flex-col h-full">
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`p-3 ${card.iconBg} backdrop-blur-sm rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                    <Icon className={`h-7 w-7 ${card.iconColor}`} />
+              <div className="relative z-10">
+                <div className="flex items-start justify-between mb-4">
+                  <div className={`p-3 rounded-xl ${card.iconBg} transition-transform duration-300 group-hover:scale-110`}>
+                    <Icon className={`h-6 w-6 ${card.iconColor}`} />
                   </div>
+                  
                   {card.trend !== 0 && (
-                    <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/15 backdrop-blur-sm shadow-lg">
+                    <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                      isPositive 
+                        ? 'bg-[#2A9D8F]/10 text-[#2A9D8F]' 
+                        : 'bg-[#E63946]/10 text-[#E63946]'
+                    }`}>
                       {isPositive ? (
-                        <TrendingUp className="h-3.5 w-3.5 text-white/90" />
+                        <TrendingUp className="h-3 w-3" />
                       ) : (
-                        <TrendingDown className="h-3.5 w-3.5 text-white/90" />
+                        <TrendingDown className="h-3 w-3" />
                       )}
-                      <span className="text-xs font-bold text-white/90">
-                        {isPositive ? '+' : ''}{card.trend.toFixed(1)}%
-                      </span>
+                      <span>{isPositive ? '+' : ''}{card.trend.toFixed(1)}%</span>
                     </div>
                   )}
                 </div>
-                <p className="text-white/70 text-sm font-semibold mb-2 tracking-wide uppercase">{card.title}</p>
-                <div className="flex items-baseline gap-2 mt-auto">
-                  <span className="text-4xl font-extrabold text-white drop-shadow-lg leading-none">{typeof card.value === 'number' ? card.value.toLocaleString() : card.value}</span>
-                  {card.suffix && <span className="text-sm font-medium text-white/70">{card.suffix}</span>}
+
+                <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">
+                  {card.title}
+                </p>
+                
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-3xl font-bold text-[#1D3557] tracking-tight`}>
+                    {typeof card.value === 'number' ? card.value.toLocaleString() : card.value}
+                  </span>
+                  {card.suffix && (
+                    <span className="text-sm font-semibold text-gray-400">{card.suffix}</span>
+                  )}
                 </div>
               </div>
             </button>

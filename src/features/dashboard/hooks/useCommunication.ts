@@ -24,8 +24,7 @@ import {
 
 import {
   useMessages as useMessagesDB,
-  useMessagingStats as useMessagingStatsDB,
-  useConversations as useConversationsDB
+  useMessagingStats as useMessagingStatsDB
 } from './useMessaging';
 
 // ============= QUERY KEYS =============
@@ -263,10 +262,6 @@ export const useMessagingStats = () => {
   return useMessagingStatsDB();
 };
 
-export const useConversations = () => {
-  // Utiliser le hook connecté
-  return useConversationsDB();
-};
 
 // ============= SOCIAL FEED (Connecté Supabase) =============
 export const usePosts = (filters: PostFilters = {}) => {
@@ -480,10 +475,7 @@ export {
 } from './useTickets';
 
 export {
-  useSendMessage,
-  useMarkAsRead,
-  useDeleteMessage,
-  useSaveDraft
+  useSendMessage
 } from './useMessaging';
 
 // Mutation pour créer un post

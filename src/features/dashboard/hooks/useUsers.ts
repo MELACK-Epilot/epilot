@@ -44,6 +44,8 @@ interface UserFilters {
   role?: 'admin_groupe';
   page?: number;
   pageSize?: number;
+  /** Désactive la requête si false */
+  enabled?: boolean;
 }
 
 /**
@@ -62,8 +64,10 @@ export interface PaginatedUsers {
  * Scope Super Admin : uniquement les Administrateurs de Groupe
  */
 export const useUsers = (filters?: UserFilters) => {
+  const { enabled = true, ...queryFilters } = filters || {};
+  
   return useQuery({
-    queryKey: userKeys.list(filters || {}),
+    queryKey: userKeys.list(queryFilters),
     queryFn: async () => {
       const page = filters?.page || 1;
       const pageSize = filters?.pageSize || 20;
@@ -193,6 +197,7 @@ export const useUsers = (filters?: UserFilters) => {
       } as PaginatedUsers;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled, // Permet de désactiver la requête conditionnellement
   });
 };
 
