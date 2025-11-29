@@ -5,14 +5,6 @@
 
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import {
   Collapsible,
   CollapsibleContent,
@@ -28,10 +20,8 @@ import {
   ChevronDown,
   ChevronRight,
   Layers,
-  CheckCircle2,
-  XCircle,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { groupModulesByCategory } from '../utils';
 import type { UserModule } from '../types';
 
@@ -45,42 +35,33 @@ interface ModulesTabProps {
 
 const PermissionBadge = ({
   icon: Icon,
-  label,
   active,
   color,
   onClick,
   canEdit,
 }: {
   icon: React.ElementType;
-  label: string;
+  label?: string;
   active: boolean;
   color: string;
   onClick?: () => void;
   canEdit?: boolean;
 }) => (
-  <TooltipProvider>
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          onClick={canEdit ? onClick : undefined}
-          disabled={!canEdit}
-          className={`
-            flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200
-            ${active
-              ? `${color} text-white shadow-sm`
-              : 'bg-gray-100 text-gray-400'
-            }
-            ${canEdit ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}
-          `}
-        >
-          <Icon className="h-4 w-4" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>{label}: {active ? 'Activé' : 'Désactivé'}</p>
-      </TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
+  <button
+    type="button"
+    onClick={canEdit ? onClick : undefined}
+    disabled={!canEdit}
+    className={`
+      flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200
+      ${active
+        ? `${color} text-white shadow-sm`
+        : 'bg-gray-100 text-gray-400'
+      }
+      ${canEdit ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}
+    `}
+  >
+    <Icon className="h-4 w-4" />
+  </button>
 );
 
 export const ModulesTab = ({
@@ -235,7 +216,6 @@ export const ModulesTab = ({
                           <div className="flex items-center gap-2">
                             <PermissionBadge
                               icon={Eye}
-                              label="Lecture"
                               active={mod.can_read}
                               color="bg-emerald-500"
                               canEdit={canEdit}
@@ -243,7 +223,6 @@ export const ModulesTab = ({
                             />
                             <PermissionBadge
                               icon={PenLine}
-                              label="Écriture"
                               active={mod.can_write}
                               color="bg-blue-500"
                               canEdit={canEdit}
@@ -251,7 +230,6 @@ export const ModulesTab = ({
                             />
                             <PermissionBadge
                               icon={Trash2}
-                              label="Suppression"
                               active={mod.can_delete}
                               color="bg-red-500"
                               canEdit={canEdit}
@@ -259,7 +237,6 @@ export const ModulesTab = ({
                             />
                             <PermissionBadge
                               icon={Download}
-                              label="Export"
                               active={mod.can_export}
                               color="bg-purple-500"
                               canEdit={canEdit}

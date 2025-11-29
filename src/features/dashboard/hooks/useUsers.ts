@@ -288,7 +288,8 @@ interface CreateUserInput {
   schoolId?: string; // École d'affectation
   password: string;
   sendWelcomeEmail?: boolean;
-  role?: 'super_admin' | 'admin_groupe';
+  role?: string; // Type large pour inclure tous les rôles
+  accessProfileCode?: string; // ✅ Profil d'accès pour modules
   avatarFile?: File | null;
   gender?: 'M' | 'F';
   dateOfBirth?: string;
@@ -377,6 +378,7 @@ export const useCreateUser = () => {
         email: input.email,
         phone: input.phone,
         role: input.role || 'admin_groupe',
+        access_profile_code: input.accessProfileCode || null, // ✅ Profil d'accès ajouté
         status: 'active',
         avatar: avatarPath,
       };
@@ -767,9 +769,19 @@ export const useUserEvolutionStats = (schoolGroupId?: string) => {
       const { data, error } = await supabase
         .rpc('get_user_evolution_stats', { p_school_group_id: schoolGroupId || null });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erreur evolution stats:', error);
+        throw error;
+      }
 
-      return data as { month_label: string; user_count: number }[];
+      console.log('📊 Evolution stats raw:', data);
+      
+      // La fonction SQL retourne un JSON, pas un tableau directement
+      // Supabase peut retourner data directement comme tableau si la fonction retourne JSON
+      const result = Array.isArray(data) ? data : [];
+      console.log('📊 Evolution stats parsed:', result);
+      
+      return result as { month_label: string; user_count: number }[];
     },
     staleTime: 30 * 60 * 1000, // 30 minutes
   });
@@ -785,9 +797,17 @@ export const useUserDistributionStats = (schoolGroupId?: string) => {
       const { data, error } = await supabase
         .rpc('get_user_distribution_stats', { p_school_group_id: schoolGroupId || null });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erreur distribution stats:', error);
+        throw error;
+      }
 
-      return data as { name: string; value: number }[];
+      console.log('📊 Distribution stats raw:', data);
+      
+      const result = Array.isArray(data) ? data : [];
+      console.log('📊 Distribution stats parsed:', result);
+      
+      return result as { name: string; value: number }[];
     },
     staleTime: 30 * 60 * 1000, // 30 minutes
   });
