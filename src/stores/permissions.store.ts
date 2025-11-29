@@ -152,6 +152,9 @@ interface PermissionsActions {
   setupRealtimeSubscription: (userId: string) => void;
   cleanupRealtimeSubscription: () => void;
   
+  // ⚡ Optimisation: Injection directe depuis login
+  setModulesFromLogin: (modules: any[]) => void;
+  
   // Utilitaires
   getModuleBySlug: (slug: string) => AssignedModule | undefined;
   getModulesByCategory: (categoryId: string) => AssignedModule[];
@@ -330,6 +333,60 @@ export const usePermissionsStore = create<PermissionsState & PermissionsActions>
           console.error('❌ [PermissionsStore] Erreur chargement modules:', error);
           throw error;
         }
+      },
+
+      /**
+       * ⚡ Injection directe des modules depuis le login (évite un appel réseau)
+       */
+      setModulesFromLogin: (modules: any[]) => {
+        console.log('⚡ [PermissionsStore] Injection modules depuis login:', modules.length);
+        
+        const assignedModules: AssignedModule[] = modules.map((m) => ({
+          id: m.id,
+          name: m.name,
+          slug: m.slug,
+          description: m.description || '',
+          icon: m.icon || 'Package',
+          color: m.color || '#2A9D8F',
+          categoryId: m.categoryId || '',
+          categoryName: m.categoryName || 'Sans catégorie',
+          categorySlug: m.categorySlug || '',
+          isCore: m.isCore || false,
+          version: '1.0.0',
+          status: 'active' as const,
+          requiredPlan: 'gratuit' as const,
+          permissions: {
+            moduleId: m.id,
+            moduleSlug: m.slug,
+            moduleName: m.name,
+            canRead: m.permissions?.canRead ?? true,
+            canWrite: m.permissions?.canWrite ?? false,
+            canDelete: m.permissions?.canDelete ?? false,
+            canExport: m.permissions?.canExport ?? false,
+            canManage: false,
+            assignedAt: m.assignedAt || new Date().toISOString(),
+            assignedBy: undefined,
+            validUntil: null,
+            isEnabled: true,
+          },
+          lastAccessedAt: m.lastAccessedAt,
+          accessCount: m.accessCount || 0,
+        }));
+
+        const modulePermissions: Record<string, ModulePermission> = {};
+        assignedModules.forEach((module) => {
+          modulePermissions[module.slug] = module.permissions;
+        });
+
+        set((state) => {
+          state.assignedModules = assignedModules;
+          state.modulePermissions = modulePermissions;
+          state.totalModulesCount = assignedModules.length;
+          state.enabledModulesCount = assignedModules.length;
+          state.isInitialized = true;
+          state.isLoading = false;
+          state.lastSyncAt = new Date().toISOString();
+        });
       },
 
       /**

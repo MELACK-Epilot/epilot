@@ -7,7 +7,7 @@
  */
 
 import React, { createContext, useContext, useEffect, ReactNode } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+// useQueryClient disponible si besoin d'invalidations
 import { useCurrentUser } from '@/features/user-space/hooks/useCurrentUser';
 import { usePermissionsStore } from '@/stores/permissions.store';
 import type { AssignedModule } from '@/stores/permissions.store';
@@ -62,7 +62,6 @@ interface PermissionsProviderProps {
  */
 export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({ children }) => {
   const { data: user, isLoading: userLoading } = useCurrentUser();
-  const queryClient = useQueryClient();
   
   // Store Zustand
   const {
@@ -83,9 +82,17 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({ childr
   } = usePermissionsStore();
 
   /**
-   * Initialiser le store quand l'utilisateur est chargé
+   * ⚡ Initialiser le store SEULEMENT si pas déjà fait par le login
+   * Le hook useLoginOptimized injecte déjà les modules via setModulesFromLogin
    */
   useEffect(() => {
+    // Si déjà initialisé (par le login), ne rien faire
+    if (isInitialized && assignedModules.length > 0) {
+      console.log('⚡ [PermissionsProvider] Déjà initialisé, skip');
+      return;
+    }
+    
+    // Si utilisateur connecté mais pas de modules, initialiser
     if (user?.id && !isInitialized) {
       console.log('🚀 [PermissionsProvider] Initialisation pour:', user.id);
       initialize(user.id);
@@ -93,16 +100,17 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({ childr
       console.log('🔄 [PermissionsProvider] Reset - utilisateur déconnecté');
       reset();
     }
-  }, [user?.id, isInitialized, initialize, reset]);
+  }, [user?.id, isInitialized, assignedModules.length, initialize, reset]);
 
   /**
-   * Nettoyer lors du démontage
+   * Nettoyer lors du démontage (seulement si déconnexion)
    */
   useEffect(() => {
     return () => {
-      reset();
+      // Ne pas reset si juste un re-render
+      // Le reset se fait dans le useEffect ci-dessus quand user devient null
     };
-  }, [reset]);
+  }, []);
 
   /**
    * Valeur du contexte

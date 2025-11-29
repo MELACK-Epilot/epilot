@@ -1,16 +1,20 @@
 /**
  * Hook pour récupérer l'utilisateur connecté
- * ⚠️ LOGIQUE MÉTIER E-PILOT:
- * - S'exécute UNIQUEMENT si session Supabase active
- * - Retourne null si non authentifié (pas d'erreur)
- * - Utilisé par tous les dashboards utilisateurs
+ * 
+ * ⚡ OPTIMISÉ:
+ * - Utilise d'abord le cache Zustand (instant)
+ * - Fallback sur React Query si cache vide
+ * - Évite les appels réseau redondants après login
+ * 
+ * @module useCurrentUser
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
+import { useAuthStore } from '@/features/auth/store/auth.store';
 
-interface CurrentUser {
+export interface CurrentUser {
   id: string;
   email: string;
   firstName: string;
@@ -23,45 +27,51 @@ interface CurrentUser {
 }
 
 export const useCurrentUser = () => {
-  const [hasSession, setHasSession] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const queryClient = useQueryClient();
+  
+  // ⚡ Priorité 1: Cache Zustand (instant, déjà chargé au login)
+  const zustandUser = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  
+  // ⚡ Priorité 2: Cache React Query
+  const cachedUser = queryClient.getQueryData<CurrentUser>(['current-user']);
+  
+  // Déterminer si on a déjà les données
+  const hasUserData = useMemo(() => {
+    return !!(zustandUser || cachedUser);
+  }, [zustandUser, cachedUser]);
 
-  // Vérifier la session Supabase au mount
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setHasSession(!!session);
-      } catch (error) {
-        console.error('❌ Erreur vérification session:', error);
-        setHasSession(false);
-      } finally {
-        setIsCheckingSession(false);
-      }
+  // Transformer le user Zustand en CurrentUser
+  const transformedZustandUser = useMemo((): CurrentUser | null => {
+    if (!zustandUser) return null;
+    return {
+      id: zustandUser.id,
+      email: zustandUser.email,
+      firstName: zustandUser.firstName || 'Utilisateur',
+      lastName: zustandUser.lastName || '',
+      role: zustandUser.role,
+      schoolId: zustandUser.schoolId,
+      schoolGroupId: zustandUser.schoolGroupId,
+      avatar: zustandUser.avatar,
+      status: 'active',
     };
-    
-    checkSession();
-
-    // Écouter les changements de session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setHasSession(!!session);
-      setIsCheckingSession(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  }, [zustandUser]);
 
   const query = useQuery({
     queryKey: ['current-user'],
-    queryFn: async () => {
-      // 1. Récupérer l'utilisateur Auth
+    queryFn: async (): Promise<CurrentUser | null> => {
+      // Si on a déjà les données Zustand, les utiliser
+      if (transformedZustandUser) {
+        return transformedZustandUser;
+      }
+
+      // Sinon, fetch depuis Supabase (fallback)
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
       
       if (authError || !authUser) {
-        return null; // Retourner null au lieu de throw (pas d'erreur dans la console)
+        return null;
       }
 
-      // 2. Récupérer les données complètes depuis la table users
       const { data, error } = await supabase
         .from('users')
         .select(`
@@ -78,16 +88,12 @@ export const useCurrentUser = () => {
         .eq('id', authUser.id)
         .single();
 
-      if (error) {
+      if (error || !data) {
         console.error('❌ Erreur récupération user:', error);
         return null;
       }
-      
-      if (!data) return null;
 
-      // Cast explicite pour éviter les erreurs TypeScript
       const userData = data as any;
-
       return {
         id: userData.id,
         email: userData.email,
@@ -98,17 +104,22 @@ export const useCurrentUser = () => {
         schoolGroupId: userData.school_group_id,
         avatar: userData.avatar,
         status: userData.status,
-      } as CurrentUser;
+      };
     },
-    // ⚠️ LOGIQUE MÉTIER: Exécuter UNIQUEMENT si session active
-    enabled: hasSession,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: false, // Ne pas retry si non authentifié
+    // ⚡ Optimisation: Ne pas fetch si on a déjà les données
+    enabled: isAuthenticated && !hasUserData,
+    staleTime: 10 * 60 * 1000, // 10 minutes (augmenté)
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    retry: false,
+    // ⚡ Utiliser les données Zustand comme initialData
+    initialData: transformedZustandUser || undefined,
   });
 
-  // Retourner query avec isLoading personnalisé
+  // ⚡ Retourner les données Zustand en priorité (instant)
   return {
-    ...query,
-    isLoading: isCheckingSession || query.isLoading,
+    data: transformedZustandUser || query.data || null,
+    isLoading: !hasUserData && query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
   };
 };

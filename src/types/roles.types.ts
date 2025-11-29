@@ -482,7 +482,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     },
   },
 
-  // Configuration basique pour les autres rôles (à compléter selon les besoins)
+  // Enseignant - Accès académique limité
   [UserRole.ENSEIGNANT]: {
     users: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: false },
     academic: { canRead: true, canWrite: true, canDelete: false, canExport: true, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: true, canManageGrades: true, canManageSchedule: false, canManageCurriculum: false, canViewReports: true },
@@ -492,37 +492,206 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     modules: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
   },
 
-  // Configuration par défaut pour tous les autres rôles
-  ...Object.fromEntries(
-    [
-      UserRole.DIRECTEUR_ETUDES, UserRole.DIRECTEUR_ADJOINT, UserRole.PROFESSEUR_PRINCIPAL,
-      UserRole.COORDINATEUR_MATIERE, UserRole.CPE, UserRole.SURVEILLANT, UserRole.ASSISTANT_EDUCATION,
-      UserRole.SECRETAIRE, UserRole.SECRETAIRE_DIRECTION, UserRole.AGENT_COMPTABLE, UserRole.COMPTABLE,
-      UserRole.INFORMATICIEN, UserRole.BIBLIOTHECAIRE, UserRole.INFIRMIER, UserRole.AGENT_SERVICE,
-      UserRole.GARDIEN, UserRole.PARENT, UserRole.ELEVE, UserRole.INVITE
-    ].map(role => [
-      role,
-      {
-        users: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: false },
-        academic: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: false, canManageGrades: false, canManageSchedule: false, canManageCurriculum: false, canViewReports: false },
-        administrative: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: false, canManageDocuments: false, canManageEvents: false, canManageCommunication: false },
-        financial: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: false, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
-        technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
-        modules: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
-      }
-    ])
-  ) as Record<UserRole, RolePermissions>,
+  // Directeur des Études - Accès académique étendu
+  [UserRole.DIRECTEUR_ETUDES]: {
+    users: { canRead: true, canWrite: false, canDelete: false, canExport: true, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: true },
+    academic: { canRead: true, canWrite: true, canDelete: false, canExport: true, canManage: true, canApprove: true, canManageClasses: true, canManageStudents: true, canManageGrades: true, canManageSchedule: true, canManageCurriculum: true, canViewReports: true },
+    administrative: { canRead: true, canWrite: false, canDelete: false, canExport: true, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: false, canManageDocuments: true, canManageEvents: true, canManageCommunication: true },
+    financial: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: false, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: true, canWrite: false, canDelete: false, canExport: true, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: true },
+  },
 
+  // Directeur Adjoint
+  [UserRole.DIRECTEUR_ADJOINT]: {
+    users: { canRead: true, canWrite: false, canDelete: false, canExport: true, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: true },
+    academic: { canRead: true, canWrite: true, canDelete: false, canExport: true, canManage: true, canApprove: false, canManageClasses: true, canManageStudents: true, canManageGrades: true, canManageSchedule: true, canManageCurriculum: false, canViewReports: true },
+    administrative: { canRead: true, canWrite: false, canDelete: false, canExport: true, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: false, canManageDocuments: true, canManageEvents: true, canManageCommunication: true },
+    financial: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: false, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: true, canWrite: false, canDelete: false, canExport: true, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: true },
+  },
+
+  // Professeur Principal
+  [UserRole.PROFESSEUR_PRINCIPAL]: {
+    users: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: false },
+    academic: { canRead: true, canWrite: true, canDelete: false, canExport: true, canManage: false, canApprove: false, canManageClasses: true, canManageStudents: true, canManageGrades: true, canManageSchedule: false, canManageCurriculum: false, canViewReports: true },
+    administrative: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: false, canManageDocuments: false, canManageEvents: false, canManageCommunication: false },
+    financial: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: false, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
+  },
+
+  // Coordinateur de Matière
+  [UserRole.COORDINATEUR_MATIERE]: {
+    users: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: false },
+    academic: { canRead: true, canWrite: true, canDelete: false, canExport: true, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: true, canManageGrades: true, canManageSchedule: false, canManageCurriculum: true, canViewReports: true },
+    administrative: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: false, canManageDocuments: false, canManageEvents: false, canManageCommunication: false },
+    financial: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: false, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
+  },
+
+  // CPE - Conseiller Principal d'Éducation
+  [UserRole.CPE]: {
+    users: { canRead: true, canWrite: false, canDelete: false, canExport: true, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: true },
+    academic: { canRead: true, canWrite: true, canDelete: false, canExport: true, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: true, canManageGrades: false, canManageSchedule: false, canManageCurriculum: false, canViewReports: true },
+    administrative: { canRead: true, canWrite: false, canDelete: false, canExport: true, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: false, canManageDocuments: true, canManageEvents: true, canManageCommunication: true },
+    financial: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: false, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: true, canWrite: false, canDelete: false, canExport: true, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
+  },
+
+  // Surveillant
+  [UserRole.SURVEILLANT]: {
+    users: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: false },
+    academic: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: true, canManageGrades: false, canManageSchedule: false, canManageCurriculum: false, canViewReports: false },
+    administrative: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: false, canManageDocuments: false, canManageEvents: false, canManageCommunication: false },
+    financial: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: false, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
+  },
+
+  // Assistant d'Éducation
+  [UserRole.ASSISTANT_EDUCATION]: {
+    users: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: false },
+    academic: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: true, canManageGrades: false, canManageSchedule: false, canManageCurriculum: false, canViewReports: false },
+    administrative: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: false, canManageDocuments: false, canManageEvents: false, canManageCommunication: false },
+    financial: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: false, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
+  },
+
+  // Secrétaire
+  [UserRole.SECRETAIRE]: {
+    users: { canRead: true, canWrite: false, canDelete: false, canExport: true, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: false },
+    academic: { canRead: true, canWrite: true, canDelete: false, canExport: true, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: true, canManageGrades: false, canManageSchedule: false, canManageCurriculum: false, canViewReports: true },
+    administrative: { canRead: true, canWrite: true, canDelete: false, canExport: true, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: false, canManageDocuments: true, canManageEvents: true, canManageCommunication: true },
+    financial: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: false, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: true, canWrite: false, canDelete: false, canExport: true, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
+  },
+
+  // Secrétaire de Direction
+  [UserRole.SECRETAIRE_DIRECTION]: {
+    users: { canRead: true, canWrite: false, canDelete: false, canExport: true, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: true },
+    academic: { canRead: true, canWrite: true, canDelete: false, canExport: true, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: true, canManageGrades: false, canManageSchedule: true, canManageCurriculum: false, canViewReports: true },
+    administrative: { canRead: true, canWrite: true, canDelete: false, canExport: true, canManage: true, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: true, canManageDocuments: true, canManageEvents: true, canManageCommunication: true },
+    financial: { canRead: true, canWrite: false, canDelete: false, canExport: true, canManage: false, canApprove: false, canViewBudget: true, canManageBudget: false, canViewPayments: true, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: true },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: true, canWrite: false, canDelete: false, canExport: true, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: true },
+  },
+
+  // Agent Comptable
+  [UserRole.AGENT_COMPTABLE]: {
+    users: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: false },
+    academic: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: false, canManageGrades: false, canManageSchedule: false, canManageCurriculum: false, canViewReports: false },
+    administrative: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: true, canManageInventory: false, canManageDocuments: false, canManageEvents: false, canManageCommunication: false },
+    financial: { canRead: true, canWrite: true, canDelete: false, canExport: true, canManage: true, canApprove: true, canViewBudget: true, canManageBudget: true, canViewPayments: true, canManagePayments: true, canGenerateInvoices: true, canViewFinancialReports: true },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: true, canWrite: false, canDelete: false, canExport: true, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
+  },
+
+  // Comptable
+  [UserRole.COMPTABLE]: {
+    users: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: false },
+    academic: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: false, canManageGrades: false, canManageSchedule: false, canManageCurriculum: false, canViewReports: false },
+    administrative: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: true, canManageInventory: false, canManageDocuments: false, canManageEvents: false, canManageCommunication: false },
+    financial: { canRead: true, canWrite: true, canDelete: false, canExport: true, canManage: false, canApprove: false, canViewBudget: true, canManageBudget: false, canViewPayments: true, canManagePayments: true, canGenerateInvoices: true, canViewFinancialReports: true },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: true, canWrite: false, canDelete: false, canExport: true, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
+  },
+
+  // Informaticien
+  [UserRole.INFORMATICIEN]: {
+    users: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: true },
+    academic: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: false, canManageGrades: false, canManageSchedule: false, canManageCurriculum: false, canViewReports: false },
+    administrative: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: true, canManageDocuments: false, canManageEvents: false, canManageCommunication: false },
+    financial: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: false, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
+    technical: { canRead: true, canWrite: true, canDelete: false, canExport: true, canManage: true, canApprove: false, canManageSystem: true, canManageModules: true, canViewLogs: true, canManageBackups: true, canManageIntegrations: true },
+    modules: { canRead: true, canWrite: true, canDelete: false, canExport: true, canManage: true, canApprove: false, canAssignModules: false, canConfigureModules: true, canViewModuleStats: true },
+  },
+
+  // Bibliothécaire
+  [UserRole.BIBLIOTHECAIRE]: {
+    users: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: false },
+    academic: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: true, canManageGrades: false, canManageSchedule: false, canManageCurriculum: false, canViewReports: false },
+    administrative: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: true, canManageDocuments: true, canManageEvents: false, canManageCommunication: false },
+    financial: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: false, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
+  },
+
+  // Infirmier
+  [UserRole.INFIRMIER]: {
+    users: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: false },
+    academic: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: true, canManageGrades: false, canManageSchedule: false, canManageCurriculum: false, canViewReports: false },
+    administrative: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: true, canManageDocuments: true, canManageEvents: false, canManageCommunication: false },
+    financial: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: false, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
+  },
+
+  // Agent de Service
+  [UserRole.AGENT_SERVICE]: {
+    users: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: false },
+    academic: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: false, canManageGrades: false, canManageSchedule: false, canManageCurriculum: false, canViewReports: false },
+    administrative: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: false, canManageDocuments: false, canManageEvents: false, canManageCommunication: false },
+    financial: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: false, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
+  },
+
+  // Gardien
+  [UserRole.GARDIEN]: {
+    users: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: false },
+    academic: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: false, canManageGrades: false, canManageSchedule: false, canManageCurriculum: false, canViewReports: false },
+    administrative: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: false, canManageDocuments: false, canManageEvents: false, canManageCommunication: false },
+    financial: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: false, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
+  },
+
+  // Parent
+  [UserRole.PARENT]: {
+    users: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: false },
+    academic: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: false, canManageGrades: false, canManageSchedule: false, canManageCurriculum: false, canViewReports: true },
+    administrative: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: false, canManageDocuments: false, canManageEvents: false, canManageCommunication: false },
+    financial: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: true, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
+  },
+
+  // Élève
+  [UserRole.ELEVE]: {
+    users: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: false },
+    academic: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: false, canManageGrades: false, canManageSchedule: false, canManageCurriculum: false, canViewReports: true },
+    administrative: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: false, canManageDocuments: false, canManageEvents: false, canManageCommunication: false },
+    financial: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: false, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: true, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
+  },
+
+  // Invité
+  [UserRole.INVITE]: {
+    users: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canCreateUsers: false, canAssignRoles: false, canSuspendUsers: false, canViewAllUsers: false },
+    academic: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageClasses: false, canManageStudents: false, canManageGrades: false, canManageSchedule: false, canManageCurriculum: false, canViewReports: false },
+    administrative: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageStaff: false, canManagePayroll: false, canManageInventory: false, canManageDocuments: false, canManageEvents: false, canManageCommunication: false },
+    financial: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canViewBudget: false, canManageBudget: false, canViewPayments: false, canManagePayments: false, canGenerateInvoices: false, canViewFinancialReports: false },
+    technical: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canManageSystem: false, canManageModules: false, canViewLogs: false, canManageBackups: false, canManageIntegrations: false },
+    modules: { canRead: false, canWrite: false, canDelete: false, canExport: false, canManage: false, canApprove: false, canAssignModules: false, canConfigureModules: false, canViewModuleStats: false },
+  },
 };
 
 /**
  * Labels des rôles pour l'affichage
+ * Note: Proviseur et Directeur = "Chef d'établissement"
  */
 export const ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.SUPER_ADMIN]: 'Super Administrateur',
   [UserRole.ADMIN_GROUPE]: 'Administrateur Groupe',
-  [UserRole.PROVISEUR]: 'Proviseur',
-  [UserRole.DIRECTEUR]: 'Directeur',
+  [UserRole.PROVISEUR]: "Chef d'établissement",
+  [UserRole.DIRECTEUR]: "Chef d'établissement",
   [UserRole.DIRECTEUR_ETUDES]: 'Directeur des Études',
   [UserRole.DIRECTEUR_ADJOINT]: 'Directeur Adjoint',
   [UserRole.ENSEIGNANT]: 'Enseignant',

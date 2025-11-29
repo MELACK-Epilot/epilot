@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { usePermissions } from '@/providers/PermissionsProvider';
 import { AvailableModules } from '../components/AvailableModules';
+import { getRoleLabel } from '@/config/roles';
 
 // ============================================
 // COMPOSANTS UTILITAIRES
@@ -83,16 +84,8 @@ const WelcomeHeader = memo(({ user }: { user: { firstName: string; lastName: str
     month: 'long' 
   });
 
-  const roleLabels: Record<string, string> = {
-    proviseur: 'Proviseur',
-    directeur: 'Directeur',
-    directeur_etudes: 'Directeur des Études',
-    enseignant: 'Enseignant',
-    comptable: 'Comptable',
-    secretaire: 'Secrétaire',
-    cpe: 'CPE',
-    surveillant: 'Surveillant',
-  };
+  // Utiliser la fonction centralisée pour les labels de rôles
+  const roleLabel = getRoleLabel(user.role);
 
   return (
     <motion.div
@@ -109,7 +102,7 @@ const WelcomeHeader = memo(({ user }: { user: { firstName: string; lastName: str
           <div className="flex items-center gap-3 mt-3">
             <Badge className="bg-white/20 text-white border-0">
               <Award className="h-3 w-3 mr-1" />
-              {roleLabels[user.role] || user.role}
+              {roleLabel}
             </Badge>
             <Badge className="bg-white/20 text-white border-0">
               <Calendar className="h-3 w-3 mr-1" />

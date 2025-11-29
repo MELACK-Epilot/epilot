@@ -3,28 +3,8 @@
  * @module user-details/utils
  */
 
-/**
- * Retourne le libellé français d'un rôle
- */
-export const getRoleLabel = (role: string): string => {
-  const labels: Record<string, string> = {
-    super_admin: 'Super Admin',
-    admin_groupe: 'Admin Groupe',
-    proviseur: 'Proviseur',
-    directeur: 'Directeur',
-    directeur_etudes: 'Directeur des Études',
-    enseignant: 'Enseignant',
-    comptable: 'Comptable',
-    secretaire: 'Secrétaire',
-    surveillant: 'Surveillant',
-    cpe: 'CPE',
-    bibliothecaire: 'Bibliothécaire',
-    infirmier: 'Infirmier',
-    parent: 'Parent',
-    eleve: 'Élève',
-  };
-  return labels[role] || role;
-};
+// Réexporter depuis la source centralisée
+export { getRoleLabel } from '@/config/roles';
 
 /**
  * Labels par défaut des profils d'accès (synchronisés avec les templates BDD)

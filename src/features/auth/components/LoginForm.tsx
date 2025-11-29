@@ -1,5 +1,7 @@
 /**
  * Composant formulaire de connexion avec validation
+ * ⚡ Optimisé pour performance et UX
+ * 
  * @module LoginForm
  */
 
@@ -9,21 +11,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Loader2, Mail, Lock, LogIn } from 'lucide-react';
-import { useLogin } from '../hooks/useLogin';
-import { toast } from 'sonner';
+import { useLoginOptimized as useLogin } from '../hooks/useLoginOptimized';
 import type { LoginCredentials } from '../types/auth.types';
-import {
-  alertLoginSuccess,
-  alertLoginFailed,
-  alertInvalidEmail,
-} from '@/lib/alerts';
-
-// Composants shadcn/ui (à créer avec CLI shadcn)
+import { alertLoginSuccess, alertLoginFailed } from '@/lib/alerts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/hooks/use-toast';
 
 /**
  * Schéma de validation Zod renforcé
@@ -34,10 +28,7 @@ const loginSchema = z.object({
     .min(1, 'Email requis')
     .email('Format email invalide')
     .toLowerCase()
-    .trim()
-    .refine((email) => email.endsWith('.cg') || email.endsWith('.com'), {
-      message: 'Email doit se terminer par .cg ou .com',
-    }),
+    .trim(),
   password: z
     .string()
     .min(1, 'Mot de passe requis')
@@ -73,42 +64,46 @@ export const LoginForm = () => {
 
   const rememberMe = watch('rememberMe');
 
-  /**
-   * Soumission du formulaire avec useCallback et useTransition
-   */
-  const onSubmit = useCallback(
+  const processLogin = useCallback(
     async (data: LoginFormData) => {
-      startTransition(async () => {
-        try {
-          const credentials: LoginCredentials = {
-            email: data.email,
-            password: data.password,
-            rememberMe: data.rememberMe,
-          };
+      try {
+        const credentials: LoginCredentials = {
+          email: data.email,
+          password: data.password,
+          rememberMe: data.rememberMe,
+        };
 
-          const result = await login(credentials);
+        const result = await login(credentials);
 
-          if (result.success) {
-            // ✅ Alerte moderne de succès
-            const userName = result.user?.user_metadata?.first_name || 'Utilisateur';
-            alertLoginSuccess(userName);
-          } else {
-            // ❌ Alerte moderne d'erreur
-            alertLoginFailed(result.error || 'Email ou mot de passe incorrect');
-          }
-        } catch (error) {
-          const errorMessage = error instanceof Error
-            ? error.message
-            : 'Une erreur est survenue lors de la connexion';
-
-          // ❌ Alerte moderne d'erreur
-          alertLoginFailed(errorMessage);
-
-          console.error('LoginForm error:', error);
+        if (result.success && result.user) {
+          // ✅ Alerte de succès avec le prénom
+          alertLoginSuccess(result.user.firstName || 'Utilisateur');
+        } else if (!result.success) {
+          // ❌ Alerte d'erreur
+          alertLoginFailed(result.error || 'Email ou mot de passe incorrect');
         }
-      });
+      } catch (err) {
+        const errorMessage = err instanceof Error
+          ? err.message
+          : 'Une erreur est survenue lors de la connexion';
+
+        alertLoginFailed(errorMessage);
+        console.error('LoginForm error:', err);
+      }
     },
     [login]
+  );
+
+  /**
+   * Soumission du formulaire avec useTransition pour fluidité
+   */
+  const onSubmit = useCallback(
+    (data: LoginFormData) => {
+      startTransition(() => {
+        void processLogin(data);
+      });
+    },
+    [processLogin, startTransition]
   );
 
   return (

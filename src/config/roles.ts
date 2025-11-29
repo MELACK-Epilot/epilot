@@ -168,38 +168,67 @@ export function isValidRole(role: string): boolean {
 }
 
 /**
+ * Labels d'affichage des rôles
+ * Note: proviseur et directeur sont des "Chefs d'établissement"
+ */
+export const ROLE_LABELS: Record<string, string> = {
+  'super_admin': 'Super Admin',
+  'admin_groupe': 'Admin Groupe',
+  'proviseur': "Chef d'établissement",      // Proviseur = Chef d'établissement
+  'directeur': "Chef d'établissement",      // Directeur = Chef d'établissement
+  'directeur_etudes': 'Directeur des Études',
+  'secretaire': 'Secrétaire',
+  'comptable': 'Comptable',
+  'enseignant': 'Enseignant',
+  'cpe': 'CPE',
+  'surveillant': 'Surveillant',
+  'bibliothecaire': 'Bibliothécaire',
+  'gestionnaire_cantine': 'Gestionnaire Cantine',
+  'conseiller_orientation': "Conseiller d'Orientation",
+  'infirmier': 'Infirmier',
+  'eleve': 'Élève',
+  'parent': 'Parent',
+  'autre': 'Autre',
+} as const;
+
+/**
+ * Labels détaillés (avec distinction proviseur/directeur si nécessaire)
+ */
+export const ROLE_LABELS_DETAILED: Record<string, string> = {
+  ...ROLE_LABELS,
+  'proviseur': 'Proviseur (Chef d\'établissement)',
+  'directeur': 'Directeur (Chef d\'établissement)',
+} as const;
+
+/**
+ * Vérifie si un rôle est un chef d'établissement
+ * @param role - Rôle à vérifier
+ * @returns true si proviseur ou directeur
+ */
+export function isChefEtablissement(role: string): boolean {
+  const normalized = normalizeRole(role);
+  return normalized === 'proviseur' || normalized === 'directeur';
+}
+
+/**
  * Obtient le label d'affichage d'un rôle
  * @param role - Rôle à formater
+ * @param detailed - Si true, affiche "Proviseur (Chef d'établissement)"
  * @returns Label formaté pour l'affichage
  * 
  * @example
- * getRoleLabel('super_admin')     // 'Super Admin'
- * getRoleLabel('directeur_etudes') // 'Directeur des Études'
+ * getRoleLabel('proviseur')           // "Chef d'établissement"
+ * getRoleLabel('proviseur', true)     // "Proviseur (Chef d'établissement)"
+ * getRoleLabel('directeur_etudes')    // "Directeur des Études"
  */
-export function getRoleLabel(role: string): string {
+export function getRoleLabel(role: string, detailed: boolean = false): string {
   const normalized = normalizeRole(role);
   
-  const labels: Record<string, string> = {
-    'super_admin': 'Super Admin',
-    'admin_groupe': 'Admin Groupe',
-    'proviseur': 'Proviseur',
-    'directeur': 'Directeur',
-    'directeur_etudes': 'Directeur des Études',
-    'secretaire': 'Secrétaire',
-    'comptable': 'Comptable',
-    'enseignant': 'Enseignant',
-    'cpe': 'CPE',
-    'surveillant': 'Surveillant',
-    'bibliothecaire': 'Bibliothécaire',
-    'gestionnaire_cantine': 'Gestionnaire Cantine',
-    'conseiller_orientation': 'Conseiller d\'Orientation',
-    'infirmier': 'Infirmier',
-    'eleve': 'Élève',
-    'parent': 'Parent',
-    'autre': 'Autre',
-  };
+  if (detailed) {
+    return ROLE_LABELS_DETAILED[normalized] || normalized.replace('_', ' ');
+  }
   
-  return labels[normalized] || normalized.replace('_', ' ');
+  return ROLE_LABELS[normalized] || normalized.replace('_', ' ');
 }
 
 // ============================================================================
