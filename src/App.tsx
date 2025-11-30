@@ -55,7 +55,8 @@ import { ModulesSync } from './components/ModulesSync';
 import SandboxManager from './features/dashboard/pages/SandboxManager';
 
 // Espace Utilisateur École
-import { UserSpaceLayout, UserDashboard, MyProfile, MySchedule, MyModules, MyCategories, UserDebug } from './features/user-space';
+import { UserSpaceLayout, MyProfile, MySchedule, MyModules, MyCategories, UserDebug } from './features/user-space';
+import { UserDashboardRouter } from './features/user-space/pages/UserDashboardRouter';
 import { FinancesPage } from './features/user-space/pages/FinancesPage';
 import { ClassesPage } from './features/user-space/pages/ClassesPage';
 import { StaffPage } from './features/user-space/pages/StaffPage';
@@ -264,7 +265,7 @@ function App() {
               <UserSpaceLayout />
             </ProtectedRoute>
           }>
-            <Route index element={<UserDashboard />} />
+            <Route index element={<UserDashboardRouter />} />
             <Route path="debug" element={<UserDebug />} />
             <Route path="profile" element={<MyProfile />} />
             <Route path="school-group" element={<EstablishmentPage />} />

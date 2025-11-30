@@ -10,6 +10,7 @@ export { UserHeaderModern } from './components/UserHeaderModern';
 
 // Pages
 export { UserDashboard } from './pages/UserDashboard';
+export { UserDashboardRouter } from './pages/UserDashboardRouter';
 export { MyProfile } from './pages/MyProfile';
 export { MySchedule } from './pages/MySchedule';
 export { MyModules } from './pages/MyModules';
@@ -19,6 +20,9 @@ export { FinancesPage } from './pages/FinancesPage';
 export { ClassesPage } from './pages/ClassesPage';
 export { StaffPage } from './pages/StaffPage';
 export { StudentsPage } from './pages/StudentsPage';
+
+// Chef d'Établissement
+export { ChefDashboard, ChefLayout } from './pages/chef-etablissement';
 
 // Hooks
 export { useCurrentUser } from './hooks/useCurrentUser';

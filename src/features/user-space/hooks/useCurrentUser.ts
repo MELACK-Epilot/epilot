@@ -24,6 +24,8 @@ export interface CurrentUser {
   schoolGroupId?: string;
   avatar?: string;
   status: string;
+  accessProfileCode?: string;
+  phone?: string;
 }
 
 export const useCurrentUser = () => {
@@ -54,6 +56,8 @@ export const useCurrentUser = () => {
       schoolGroupId: zustandUser.schoolGroupId,
       avatar: zustandUser.avatar,
       status: 'active',
+      accessProfileCode: zustandUser.accessProfileCode,
+      phone: zustandUser.phone,
     };
   }, [zustandUser]);
 
@@ -83,7 +87,9 @@ export const useCurrentUser = () => {
           school_id,
           school_group_id,
           avatar,
-          status
+          status,
+          access_profile_code,
+          phone
         `)
         .eq('id', authUser.id)
         .single();
@@ -104,6 +110,8 @@ export const useCurrentUser = () => {
         schoolGroupId: userData.school_group_id,
         avatar: userData.avatar,
         status: userData.status,
+        accessProfileCode: userData.access_profile_code,
+        phone: userData.phone,
       };
     },
     // ⚡ Optimisation: Ne pas fetch si on a déjà les données
